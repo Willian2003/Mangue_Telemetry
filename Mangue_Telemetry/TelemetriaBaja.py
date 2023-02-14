@@ -11,7 +11,7 @@ import glob
 from PyQt5 import QtCore, QtGui, QtWidgets
 import io
 import folium
-from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QVBoxLayout
+from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QVBoxLayout, QMainWindow
 from PyQt5.QtWebEngineWidgets import QWebEngineView 
 from pyqtgraph import PlotWidget
 import pyqtgraph as pg
@@ -26,7 +26,7 @@ import sqlite3
 import json
 import pandas as pd
 
-broker = "fe80::b982:1519:74d7:f929"
+broker = "64.227.19.172"
 port = 1883
 topic = "/logging"
 client_id = f'python-mqtt-{random.randint(0, 1000)}'
@@ -335,48 +335,49 @@ class Receiver(threading.Thread):
        
         ccsv.to_csv('dados_telemetria.csv')
 
-    sqlmsg = list()
-    sqlmsg.append(str(car[-1]))
-    sqlmsg.append(str(accx[-1]))
-    sqlmsg.append(str(accy[-1]))
-    sqlmsg.append(str(accz[-1]))
-    sqlmsg.append(str(rpm[-1]))
-    sqlmsg.append(str(speed[-1]))
-    sqlmsg.append(str(temp_motor[-1]))
-    sqlmsg.append(str(flags[-1]))
-    sqlmsg.append(str(soc[-1]))
-    sqlmsg.append(str(temp_cvt[-1]))
-    sqlmsg.append(str(volt[-1]))
-    sqlmsg.append(str(latitude[-1]))
-    sqlmsg.append(str(longitude[-1]))
-    sqlmsg.append(str(timestamp[-1]))
-    if self.connected_mqtt:
+
+        sqlmsg = list()
+        sqlmsg.append(str(car[-1]))
+        sqlmsg.append(str(accx[-1]))
+        sqlmsg.append(str(accy[-1]))
+        sqlmsg.append(str(accz[-1]))
+        sqlmsg.append(str(rpm[-1]))
+        sqlmsg.append(str(speed[-1]))
+        sqlmsg.append(str(temp_motor[-1]))
+        sqlmsg.append(str(flags[-1]))
+        sqlmsg.append(str(soc[-1]))
+        sqlmsg.append(str(temp_cvt[-1]))
+        sqlmsg.append(str(volt[-1]))
+        sqlmsg.append(str(latitude[-1]))
+        sqlmsg.append(str(longitude[-1]))
+        sqlmsg.append(str(timestamp[-1]))
+
+        if self.connected_mqtt:
             MQTT_JSON = json.dumps({"car": f"{sqlmsg[0]}", "accx": f"{sqlmsg[1]}", "accy": f"{sqlmsg[2]}", "accz": f"{sqlmsg[3]}",
             "rpm": f"{sqlmsg[4]}", "speed": f"{sqlmsg[5]}", "motor": f"{sqlmsg[6]}", "flags": f"{sqlmsg[7]}",
             "soc": f"{sqlmsg[8]}", "cvt": f"{sqlmsg[9]}", "volt": f"{sqlmsg[10]}", "latitude": f"{sqlmsg[11]}",
             "longitude": f"{sqlmsg[12]}", "timestamp": f"{sqlmsg[13]}"})
 
             publish(self.client, topic, MQTT_JSON)
-        #try:
-            #self.conn.execute("INSERT INTO aquisitions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                              #(self.id_count, sqlmsg[0], sqlmsg[1], sqlmsg[2], sqlmsg[3], sqlmsg[4], sqlmsg[5], sqlmsg[6], sqlmsg[7],
-                               #sqlmsg[8], sqlmsg[9], sqlmsg[10], sqlmsg[11], sqlmsg[12], sqlmsg[13]))
-        #except sqlite3.IntegrityError:
-            #print("Dado já existente...  Desfazendo modificações!!!")
-            #self.conn.rollback()
-        #else:
-            #print("Tudo ok.  Commitando...")
-            #self.conn.commit()
+            #try:
+                #self.conn.execute("INSERT INTO aquisitions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                                  #(self.id_count, sqlmsg[0], sqlmsg[1], sqlmsg[2], sqlmsg[3], sqlmsg[4], sqlmsg[5], sqlmsg[6], sqlmsg[7],
+                                   #sqlmsg[8], sqlmsg[9], sqlmsg[10], sqlmsg[11], sqlmsg[12], sqlmsg[13]))
+            #except sqlite3.IntegrityError:
+                #print("Dado já existente...  Desfazendo modificações!!!")
+                #self.conn.rollback()
+            #else:
+                #print("Tudo ok.  Commitando...")
+                #self.conn.commit()
 
-        #self.id_count += 1
-
+            #self.id_count += 1
 
 class Ui_MainWindow(object):
     def __init__(self):
+        super().__init__()
         self.webView = QWebEngineView()
         self.opening = True
         self.cont = 0
-
 
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -502,7 +503,6 @@ class Ui_MainWindow(object):
         self.vel_line = self.graph_vel.plot(vel_x, vel_y, pen=self.vel_pen)
 
     def update_map(self, coordinate):
-
         if coordinate == (0, 0):
             coordinate = (-8.07305556, -37.266611111)
 
@@ -640,8 +640,7 @@ class Ui_MainWindow(object):
         self.actionStartMQTT.setText(_translate("MainWindow", "Start"))
         self.actionStopMQTT.setText(_translate("MainWindow", "Stop"))
 
-
-if __name__ == "__main__":
+if __name__=="__main__":
     app = QtWidgets.QApplication(sys.argv)
     MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()
