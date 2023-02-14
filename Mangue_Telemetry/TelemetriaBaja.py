@@ -244,7 +244,7 @@ class Receiver(threading.Thread):
         c = 0
         while c != b'\xff':
             c = self.com.read()
-            # print(f'trying, {c}')
+            # print(f'trying,{c}')
         msg = self.com.read(SIZE)
         # print(msg)
         pckt = list(unpack(FORMAT, msg))
