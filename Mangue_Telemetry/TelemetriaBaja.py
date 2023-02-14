@@ -1,26 +1,19 @@
-from PyQt5.QtSql import QSqlDatabase
-from tkinter import *
-from struct import unpack
-from collections import deque
-from colorama import Cursor
-import matplotlib.pyplot as plt
-import serial
-from scipy import signal
-import sys
-import glob
 from PyQt5 import QtCore, QtGui, QtWidgets
+import sys
 import io
 import folium
-from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QVBoxLayout, QMainWindow
-from PyQt5.QtWebEngineWidgets import QWebEngineView 
-from pyqtgraph import PlotWidget
+from PyQt5.QtWebEngineWidgets import QWebEngineView
 import pyqtgraph as pg
-import threading
 from threading import *
+from struct import unpack
+from collections import deque
+import threading
+import serial
+from scipy import signal
+import glob
 import time
 from PIL import Image
 import random
-from random import randint
 from paho.mqtt import client as mqtt_client
 import sqlite3
 import json
@@ -30,17 +23,18 @@ broker = "64.227.19.172"
 port = 1883
 topic = "/logging"
 client_id = f'python-mqtt-{random.randint(0, 1000)}'
-username = 'owntracks'
+username = 'manguebaja'
 password = 'aratucampeao'
+
 
 SIZE = 29
 FORMAT = '<BHHHHHHHHBBBBBBBLB'
 
 car = deque(200 * [''], 200)
 accx = deque(200 * [0], 200)
-accx = deque(200 * [0], 200)
 accy = deque(200 * [0], 200)
 accz = deque(200 * [0], 200)
+dpsx = deque(200 * [0], 200)
 dpsy = deque(200 * [0], 200)
 dpsz = deque(200 * [0], 200)
 rpm = deque(200 * [0], 200)
@@ -112,6 +106,7 @@ def connect_mqtt(broker, port, client_id, username, password):
     client.connect(broker, port)
     return client
 
+
 def publish(client, topic, msg):
     result = client.publish(topic, msg)
     status = result[0]
@@ -119,6 +114,7 @@ def publish(client, topic, msg):
         print(f"Send `{msg}` to topic `{topic}`")
     else:
         print(f"Failed to send message to topic {topic}")
+
 
 def subscribe(client: mqtt_client, topic):
     def on_message(client, userdata, msg):
@@ -155,7 +151,6 @@ def subscribe(client: mqtt_client, topic):
             latitude_save.append(mqttmsg[14])
             longitude_save.append(mqttmsg[15])
             timestamp_save.append(mqttmsg[16])
-
         if mqttmsg[0] == 11:
             car.append("MB1")
             accx.append(mqttmsg[1] * 0.061 / 1000)
@@ -189,6 +184,7 @@ def subscribe(client: mqtt_client, topic):
 
     client.subscribe(topic)
     client.on_message = on_message
+
 
 class Receiver(threading.Thread):
     def __init__(self, name):
@@ -227,9 +223,8 @@ class Receiver(threading.Thread):
                 break
 
         if not com:
-            raise Exception("Não há nenhuma porta serial disponível")
-        else:
-            return com
+            print("Não há nenhuma porta serial disponível")
+        return com
 
     def run(self):
         self.com.flush()
@@ -239,12 +234,12 @@ class Receiver(threading.Thread):
                 self.checkData()
             except:
                 break
-    
+
     def checkData(self):
         c = 0
         while c != b'\xff':
             c = self.com.read()
-            # print(f'trying,{c}')
+            # print(f'trying, {c}')
         msg = self.com.read(SIZE)
         # print(msg)
         pckt = list(unpack(FORMAT, msg))
@@ -279,7 +274,6 @@ class Receiver(threading.Thread):
             latitude_save.append(pckt[14])
             longitude_save.append(pckt[15])
             timestamp_save.append(pckt[16])
-
         if pckt[0] == 11:
             car.append("MB1")
             accx.append(pckt[1] * 0.061 / 1000)
@@ -312,7 +306,6 @@ class Receiver(threading.Thread):
             timestamp_save.append(pckt[16])
 
         data = {
-
             'Carro': car_save,
             'Aceleração X': accx_save,
             'Aceleração Y': accy_save,
@@ -327,14 +320,11 @@ class Receiver(threading.Thread):
             'Latitude': latitude_save,
             'Longitude': longitude_save,
             'Timestamp': timestamp_save
-
         }
-        ccsv = pd.DataFrame(data, columns=['Carro', 'Aceleração X', 'Aceleração Y', 'Aceleração Z', 'RPM',
+        csv = pd.DataFrame(data, columns=['Carro', 'Aceleração X', 'Aceleração Y', 'Aceleração Z', 'RPM',
                                           'Velocidade', 'Temperatura Motor', 'Flags', 'State of Charge',
                                           'Temperatura CVT', 'Volts', 'Latitude', 'Longitude', 'Timestamp'])
-       
-        ccsv.to_csv('dados_telemetria.csv')
-
+        csv.to_csv('dados_telemetria.csv')
 
         sqlmsg = list()
         sqlmsg.append(str(car[-1]))
@@ -351,33 +341,32 @@ class Receiver(threading.Thread):
         sqlmsg.append(str(latitude[-1]))
         sqlmsg.append(str(longitude[-1]))
         sqlmsg.append(str(timestamp[-1]))
-
         if self.connected_mqtt:
             MQTT_JSON = json.dumps({"car": f"{sqlmsg[0]}", "accx": f"{sqlmsg[1]}", "accy": f"{sqlmsg[2]}", "accz": f"{sqlmsg[3]}",
             "rpm": f"{sqlmsg[4]}", "speed": f"{sqlmsg[5]}", "motor": f"{sqlmsg[6]}", "flags": f"{sqlmsg[7]}",
             "soc": f"{sqlmsg[8]}", "cvt": f"{sqlmsg[9]}", "volt": f"{sqlmsg[10]}", "latitude": f"{sqlmsg[11]}",
             "longitude": f"{sqlmsg[12]}", "timestamp": f"{sqlmsg[13]}"})
-
             publish(self.client, topic, MQTT_JSON)
-            #try:
-                #self.conn.execute("INSERT INTO aquisitions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                                  #(self.id_count, sqlmsg[0], sqlmsg[1], sqlmsg[2], sqlmsg[3], sqlmsg[4], sqlmsg[5], sqlmsg[6], sqlmsg[7],
-                                   #sqlmsg[8], sqlmsg[9], sqlmsg[10], sqlmsg[11], sqlmsg[12], sqlmsg[13]))
-            #except sqlite3.IntegrityError:
-                #print("Dado já existente...  Desfazendo modificações!!!")
-                #self.conn.rollback()
-            #else:
-                #print("Tudo ok.  Commitando...")
-                #self.conn.commit()
+        #try:
+            #self.conn.execute("INSERT INTO aquisitions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                              #(self.id_count, sqlmsg[0], sqlmsg[1], sqlmsg[2], sqlmsg[3], sqlmsg[4], sqlmsg[5], sqlmsg[6], sqlmsg[7],
+                               #sqlmsg[8], sqlmsg[9], sqlmsg[10], sqlmsg[11], sqlmsg[12], sqlmsg[13]))
+        #except sqlite3.IntegrityError:
+            #print("Dado já existente...  Desfazendo modificações!!!")
+            #self.conn.rollback()
+        #else:
+            #print("Tudo ok.  Commitando...")
+            #self.conn.commit()
 
-            #self.id_count += 1
+        #self.id_count += 1
+
 
 class Ui_MainWindow(object):
     def __init__(self):
-        super().__init__()
         self.webView = QWebEngineView()
         self.opening = True
         self.cont = 0
+
 
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -423,7 +412,7 @@ class Ui_MainWindow(object):
         self.fuel.setGeometry(QtCore.QRect(510, 60, 161, 200))
         self.fuel.setObjectName("fuel")
         self.fuel.setText("")
-        self.fuel.setPixmap(QtGui.QPixmap("fuel_full.jpg"))
+        self.fuel.setPixmap(QtGui.QPixmap("fuel_full_vector.jpg"))
         self.fuel.setScaledContents(True)
 
         self.batt = QtWidgets.QLabel(self.centralwidget)
@@ -503,6 +492,7 @@ class Ui_MainWindow(object):
         self.vel_line = self.graph_vel.plot(vel_x, vel_y, pen=self.vel_pen)
 
     def update_map(self, coordinate):
+
         if coordinate == (0, 0):
             coordinate = (-8.07305556, -37.266611111)
 
@@ -640,7 +630,8 @@ class Ui_MainWindow(object):
         self.actionStartMQTT.setText(_translate("MainWindow", "Start"))
         self.actionStopMQTT.setText(_translate("MainWindow", "Stop"))
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()
