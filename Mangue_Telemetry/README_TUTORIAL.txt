@@ -1,12 +1,14 @@
 IMPORTANTE PARA O FUNCIONAMENTO: (O codigo so ira funcionar se essa lista for feita)
 PARA MELHOR FUNCIONAMENTO USE O PYCHARM
+Instale todas as bibliotecas
 
-Para não dar erro de serial port, PRECISA SER LIGADO NO SEU PC O  MÓDULO DA TELEMETRIA
+Para não dar erro de serial port quando der start em "radio" PRECISA SER
+LIGADO NO SEU PC O  MÓDULO DA TELEMETRIA
 
 Caso não apareça a imagem do tanque, use a imagem da pasta, "fuel_full.jpg", dessa 
-forma:self.fuel.setPixmap(QtGui.QPixmap("fuel_full.jpg")) para que ela volte a aparecer.
+forma: self.fuel.setPixmap(QtGui.QPixmap("fuel_full.jpg")) para que ela volte a aparecer.
 Exemplo completo funcional: 
-	self.fuel = QtWidgets.QLabel(self.centralwidget)
+    	self.fuel = QtWidgets.QLabel(self.centralwidget)
         self.fuel.setGeometry(QtCore.QRect(510, 60, 161, 200))
         self.fuel.setObjectName("fuel")
         self.fuel.setText("")
@@ -22,13 +24,11 @@ sua definação. Desça um pouco e quando avistar:
 	if self._png_image is None:
             if driver is None:
                 from selenium import webdriver
-procure por:driver = webdriver.Firefox(options=options), você irá precisar modifica-la para 
+procure por: driver = webdriver.Firefox(options=options), você irá precisar modifica-la para:
 driver = webdriver.Firefox(options=options, firefox_binary=r"C:\Program Files\Mozilla Firefox\firefox.exe")
 Assim ele vai prourar diramente na pasta padrão onde é baixado o firefox.
 
-e para sua visualização os arquivos map.png, map.html e geckodriver.exe.
+Vale ressaltar que C:\Program Files\Mozilla Firefox é o caminho normalmente usado, porém, dependendo onde você
+instalou pode mudar. Então tenha certeza que o camiho está certo.
 
-
-MUDANÇAS:(Pode ignorar)
-Mudança na variavel broker para: 64.227.19.172 
-criação da lista sqlmsg e do if self.connected_mqtt na dentição certa da def checkData
+e para sua visualização os arquivos map.png, map.html e geckodriver.exe devem ser adicionados a pasta.
