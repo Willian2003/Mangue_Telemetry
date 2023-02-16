@@ -28,7 +28,7 @@ procure por: driver = webdriver.Firefox(options=options), você irá precisar mo
 driver = webdriver.Firefox(options=options, firefox_binary=r"C:\Program Files\Mozilla Firefox\firefox.exe")
 Assim ele vai prourar diramente na pasta padrão onde é baixado o firefox.
 
-Vale ressaltar que C:\Program Files\Mozilla Firefox é o caminho normalmente usado, porém, dependendo onde você
-instalou pode mudar. Então tenha certeza que o camiho está certo.
+Vale ressaltar que C:\Program Files\Mozilla Firefox é o caminho padrão, porém, dependendo onde e como você
+instalou pode mudar. Então tenha certeza que o caminho está certo.
 
 e para sua visualização os arquivos map.png, map.html e geckodriver.exe devem ser adicionados a pasta.
