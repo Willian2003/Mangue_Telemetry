@@ -2,6 +2,12 @@ IMPORTANTE PARA O FUNCIONAMENTO: (O codigo so ira funcionar se essa lista for fe
 PARA MELHOR FUNCIONAMENTO USE O PYCHARM
 Instale todas as bibliotecas
 
+Como instalar bibliotecas no pycharm:
+Canto inferior esquerdo procure por Python Packages
+Clicando nela coloque o nome da biblioteca que você quer instalar
+Selecione a biblioteca e pressione Install package.
+
+
 Para não dar erro de serial port quando der start em "radio" PRECISA SER
 LIGADO NO SEU PC O  MÓDULO DA TELEMETRIA
 
@@ -16,8 +22,8 @@ Exemplo completo funcional:
         self.fuel.setScaledContents(True) 
 
 Para o mapa inclua OBRIGATORIAMENTE A BIBLIOTECA FOLIUM E O MOZILLA FIREFOX(o navegador
-pode ser baixado por fora mesmo) E EM PYTHON PACKAGES (canto inferior esquerdo)
-INSTALE O SELENIUM
+pode ser baixado por fora mesmo(link para instalar no site:https: //www.mozilla.org/pt-BR/firefox/new/)
+E INSTALE A BIBLIOTECA SELENIUM
 
 Em def update_map procure por _to_png e aperte ctrl+click para ir diretamente para 
 sua definação. Desça um pouco e quando avistar: 
