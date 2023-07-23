@@ -359,7 +359,7 @@ class Ui_MainWindow(object):
         self.fuel.setGeometry(QtCore.QRect(510, 60, 161, 200))
         self.fuel.setObjectName("fuel")
         self.fuel.setText("")
-        self.fuel.setPixmap(QtGui.QPixmap("fuel_full_vector.jpg"))
+        self.fuel.setPixmap(QtGui.QPixmap("Mangue_Telemetry/fuel_empty_vector.jpg"))
         self.fuel.setScaledContents(True) 
 
         self.batt = QtWidgets.QLabel(self.centralwidget)
