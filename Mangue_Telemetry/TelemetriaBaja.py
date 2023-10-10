@@ -26,9 +26,9 @@ client_id = f'python-mqtt-{random.randint(0, 1000)}'
 username = 'manguebaja'
 password = 'aratucampeao'
 
-
-SIZE = 29
-FORMAT = '<BHHHHHHHHBBBBBBBLB'
+SIZE = 43
+# B = 1by || H = 2by || L(float) = F(int) = 4by || D = 8by
+FORMAT = '<BHHHHHHHHBBBBDLLHF'
 
 car = deque(200 * [''], 200)
 accx = deque(200 * [0], 200)
@@ -46,10 +46,12 @@ temp_cvt = deque(200 * [0], 200)
 volt = deque(200 * [0], 200)
 latitude = deque(200 * [0], 200)
 longitude = deque(200 * [0], 200)
+fuel_level = deque(200 * [0], 200)
 timestamp = deque(200 * [0], 200)
 eixo = deque(200 * [0], 200)
 
-b, a = signal.butter(1, 0.1, analog=False)
+b, a = signal.butter(3, 0.15, analog=False)
+c, d = signal.butter(3, 0.5, analog=False)
 
 car_save = []
 accx_save = []
@@ -61,12 +63,13 @@ dpsz_save = []
 rpm_save = []
 speed_save = []
 temp_motor_save = []
-flags_save =[]
+flags_save = []
 soc_save = []
 temp_cvt_save = []
 volt_save = []
 latitude_save = []
 longitude_save = []
+fuel_level_save = []
 timestamp_save = []
 
 stop_threads = False
@@ -92,7 +95,6 @@ def serial_ports():
             pass
     return result
 
-
 def connect_mqtt(broker, port, client_id, username, password):
     def on_connect(client, userdata, flags, rc):
         if rc == 0:
@@ -105,10 +107,6 @@ def connect_mqtt(broker, port, client_id, username, password):
     client.on_connect = on_connect
     client.connect(broker, port)
     return client
-
-
-
-
 
 def subscribe(client: mqtt_client, topic):
     def on_message(client, userdata, msg):
@@ -128,6 +126,7 @@ def subscribe(client: mqtt_client, topic):
         volt.append(mqtt_msg_json["volt"])
         latitude.append(mqtt_msg_json["latitude"])
         longitude.append(mqtt_msg_json["longitude"])
+        fuel_level.append(mqtt_msg_json["fuel_level"])
         timestamp.append(mqtt_msg_json["timestamp"])
 
 
@@ -195,8 +194,6 @@ class Receiver(threading.Thread):
         # print(pckt)
         # print((pckt[25]/65535)*5000)
 
-
-
         if pckt[0] == 22:
             car.append("MB2")
             accx.append(pckt[1] * 0.061 / 1000)
@@ -210,14 +207,18 @@ class Receiver(threading.Thread):
             temp_cvt.append(pckt[12])
             volt.append(pckt[13])
             latitude.append(pckt[14])
-            timestamp.append(pckt[16])
+            longitude.append(pckt[15])
+            fuel_level.append(pckt[16])
+            timestamp.append(pckt[17])
 
             car_save.append("MB2")
             accx_save.append(pckt[1] * 0.061 / 1000)
             accy_save.append(pckt[2] * 0.061 / 1000)
             accz_save.append(pckt[3] * 0.061 / 1000)
             rpm_save.append((pckt[7] / 65535) * 5000)
+            rpm_save.append(pckt[7])
             speed_save.append((pckt[8] / 65535) * 60)
+            speed_save.append(pckt[8])
             temp_motor_save.append(pckt[9])
             flags_save.append(pckt[10])
             soc_save.append(pckt[11])
@@ -225,7 +226,9 @@ class Receiver(threading.Thread):
             volt_save.append(pckt[13])
             latitude_save.append(pckt[14])
             longitude_save.append(pckt[15])
-            timestamp_save.append(pckt[16])
+            fuel_level_save.append(pckt[16])
+            timestamp_save.append(pckt[17])
+
         if pckt[0] == 11:
             car.append("MB1")
             accx.append(pckt[1] * 0.061 / 1000)
@@ -240,7 +243,8 @@ class Receiver(threading.Thread):
             volt.append(pckt[13])
             latitude.append(pckt[14])
             longitude.append(pckt[15])
-            timestamp.append(pckt[16])
+            fuel_level.append(pckt[16])
+            timestamp.append(pckt[17])
 
             car_save.append("MB1")
             accx_save.append(pckt[1] * 0.061 / 1000)
@@ -255,7 +259,8 @@ class Receiver(threading.Thread):
             volt_save.append(pckt[13])
             latitude_save.append(pckt[14])
             longitude_save.append(pckt[15])
-            timestamp_save.append(pckt[16])
+            fuel_level_save.append(pckt[16])
+            timestamp_save.append(pckt[17])
 
         data = {
             'Carro': car_save,
@@ -271,11 +276,13 @@ class Receiver(threading.Thread):
             'Volts': volt_save,
             'Latitude': latitude_save,
             'Longitude': longitude_save,
+            'Nivel de combustivel' : fuel_level_save,
             'Timestamp': timestamp_save
         }
         csv = pd.DataFrame(data, columns=['Carro', 'Aceleração X', 'Aceleração Y', 'Aceleração Z', 'RPM',
                                           'Velocidade', 'Temperatura Motor', 'Flags', 'State of Charge',
-                                          'Temperatura CVT', 'Volts', 'Latitude', 'Longitude', 'Timestamp'])
+                                          'Temperatura CVT', 'Volts', 'Latitude', 'Longitude',
+                                          'Nivel de combustivel', 'Timestamp'])
         csv.to_csv('dados_telemetria.csv')
 
         sqlmsg = list()
@@ -317,22 +324,25 @@ class Ui_MainWindow(object):
 
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(895, 460)
+        MainWindow.resize(1000, 550)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
+
+        self.icon = QtGui.QIcon("MANGUE-BAJA-LOGO-C-ESTRELA.ico")
+        MainWindow.setWindowIcon(self.icon)
 
         self.map = QtWidgets.QLabel(self.centralwidget)
         self.map.setGeometry(QtCore.QRect(10, 10, 461, 251))
         self.map.setObjectName("map")
 
         self.graph_rot = pg.PlotWidget(self.centralwidget)
-        self.graph_rot.setGeometry(QtCore.QRect(10, 290, 221, 150))
+        self.graph_rot.setGeometry(QtCore.QRect(10, 290, 221, 175))
         self.graph_rot.setObjectName("graph_rot")
         self.graph_rot.setBackground('w')
         self.graph_rot.setTitle("RPM", color='r')
 
         self.graph_vel = pg.PlotWidget(self.centralwidget)
-        self.graph_vel.setGeometry(QtCore.QRect(250, 290, 221, 150))
+        self.graph_vel.setGeometry(QtCore.QRect(250, 290, 221, 175))
         self.graph_vel.setObjectName("graph_vel")
         self.graph_vel.setBackground('w')
         self.graph_vel.setTitle("Velocidade", color='b')
@@ -341,17 +351,17 @@ class Ui_MainWindow(object):
         font.setPointSize(16)
 
         self.acc_x = QtWidgets.QLabel(self.centralwidget)
-        self.acc_x.setGeometry(QtCore.QRect(480, 10, 130, 51))
+        self.acc_x.setGeometry(QtCore.QRect(480, 10, 180, 51))
         self.acc_x.setObjectName("acc_x")
         self.acc_x.setFont(font)
 
         self.acc_y = QtWidgets.QLabel(self.centralwidget)
-        self.acc_y.setGeometry(QtCore.QRect(620, 10, 130, 51))
+        self.acc_y.setGeometry(QtCore.QRect(650, 10, 180, 51))
         self.acc_y.setObjectName("acc_y")
         self.acc_y.setFont(font)
 
         self.acc_z = QtWidgets.QLabel(self.centralwidget)
-        self.acc_z.setGeometry(QtCore.QRect(760, 10, 130, 51))
+        self.acc_z.setGeometry(QtCore.QRect(820, 10, 180, 51))
         self.acc_z.setObjectName("acc_z")
         self.acc_z.setFont(font)
 
@@ -359,21 +369,21 @@ class Ui_MainWindow(object):
         self.fuel.setGeometry(QtCore.QRect(510, 60, 161, 200))
         self.fuel.setObjectName("fuel")
         self.fuel.setText("")
-        self.fuel.setPixmap(QtGui.QPixmap("Mangue_Telemetry/fuel_empty_vector.jpg"))
-        self.fuel.setScaledContents(True) 
+        self.fuel.setPixmap(QtGui.QPixmap("fuel_empty_vector.jpg"))
+        self.fuel.setScaledContents(True)
 
         self.batt = QtWidgets.QLabel(self.centralwidget)
-        self.batt.setGeometry(QtCore.QRect(690, 110, 161, 101))
+        self.batt.setGeometry(QtCore.QRect(700, 110, 200, 110))
         self.batt.setObjectName("batt")
         self.batt.setFont(font)
 
         self.temp_motor = QtWidgets.QLabel(self.centralwidget)
-        self.temp_motor.setGeometry(QtCore.QRect(690, 240, 161, 101))
+        self.temp_motor.setGeometry(QtCore.QRect(700, 260, 200, 110))
         self.temp_motor.setObjectName("temp_motor")
         self.temp_motor.setFont(font)
 
         self.temp_cvt = QtWidgets.QLabel(self.centralwidget)
-        self.temp_cvt.setGeometry(QtCore.QRect(510, 240, 161, 101))
+        self.temp_cvt.setGeometry(QtCore.QRect(510, 260, 200, 110))
         self.temp_cvt.setObjectName("temp_cvt")
         self.temp_cvt.setFont(font)
 
@@ -441,7 +451,7 @@ class Ui_MainWindow(object):
     def update_map(self, coordinate):
 
         if coordinate == (0, 0):
-            coordinate = (-23.162778, -45.795)
+            coordinate = (-12.708088, -38.173269)
 
         self.m = folium.Map(
             zoom_start=18,
@@ -500,6 +510,8 @@ class Ui_MainWindow(object):
 
             sig_rpm = signal.filtfilt(b, a, rpm)
             sig_speed = signal.filtfilt(b, a, speed)
+            sig_tempmotor = signal.filtfilt(c, d, temp_motor)
+            sig_tempcvt = signal.filtfilt(c, d, temp_cvt)
 
             self.update_plots(eixo, sig_rpm, eixo, sig_speed)
             self.update_map((latitude[-1], longitude[-1]))
@@ -510,8 +522,15 @@ class Ui_MainWindow(object):
 
             self.batt.setText(f"Bateria = {soc[-1]}%")
 
-            self.temp_cvt.setText(f"CVT = {temp_cvt[-1]}ºC")
-            self.temp_motor.setText(f"Motor = {temp_motor[-1]}ºC")
+            self.temp_cvt.setText(f"CVT = {sig_tempcvt[-1]}ºC")
+            self.temp_motor.setText(f"Motor = {sig_tempmotor[-1]}ºC")
+
+            if fuel_level[-1] != 0:
+                self.fuel.setPixmap(QtGui.QPixmap("fuel_full_vector.jpg"))
+                self.fuel.setScaledContents(True)
+            else:
+                self.fuel.setPixmap(QtGui.QPixmap("fuel_empty_vector.jpg"))
+                self.fuel.setScaledContents(True)
 
             time.sleep(0.5)
 
@@ -526,15 +545,17 @@ class Ui_MainWindow(object):
             subscribe(box.client, topic)
         self.cont = 0
 
-        self.rot_line.clear()
-        self.vel_line.clear()
-
         while True:
+            self.rot_line.clear()
+            self.vel_line.clear()
+
             self.cont += 1
             eixo.append(self.cont)
 
             sig_rpm = signal.filtfilt(b, a, rpm)
             sig_speed = signal.filtfilt(b, a, speed)
+            sig_tempmotor = signal.filtfilt(c, d, temp_motor)
+            sig_tempcvt = signal.filtfilt(c, d, temp_cvt)
 
             self.update_plots(eixo, sig_rpm, eixo, sig_speed)
             self.update_map((latitude[-1], longitude[-1]))
@@ -545,8 +566,15 @@ class Ui_MainWindow(object):
 
             self.batt.setText(f"Bateria = {soc[-1]}%")
 
-            self.temp_cvt.setText(f"CVT = {temp_cvt[-1]}ºC")
-            self.temp_motor.setText(f"Motor = {temp_motor[-1]}ºC")
+            self.temp_cvt.setText(f"CVT = {sig_tempcvt[-1]}ºC")
+            self.temp_motor.setText(f"Motor = {sig_tempmotor[-1]}ºC")
+
+            if fuel_level[-1] != 0:
+                self.fuel.setPixmap(QtGui.QPixmap("fuel_full_vector.jpg"))
+                self.fuel.setScaledContents(True)
+            else:
+                self.fuel.setPixmap(QtGui.QPixmap("fuel_empty_vector.jpg"))
+                self.fuel.setScaledContents(True)
 
             time.sleep(0.5)
 
@@ -560,7 +588,7 @@ class Ui_MainWindow(object):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "Mangue Telemetria"))
 
-        self.update_map((-23.162778, -45.795))
+        self.update_map((-12.708088, -38.173269))
         self.update_plots([0, 1, 2, 3, 4], [0, 1, 2, 3, 4], [0, 1, 2, 3, 4], [0, 1, 2, 3, 4])
         self.acc_x.setText(_translate("MainWindow", f"Acc x = {0}g"))
         self.acc_y.setText(_translate("MainWindow", f"Acc y = {0}g"))

@@ -156,3 +156,21 @@ console.error: ({})
 DevTools listening on ws://127.0.0.1:58614/devtools/browser/71fb7b80-7d3c-4c90-9dfb-6791735396aa
 1690136934820	Marionette	INFO	Stopped listening on port 58621
 Dynamically enable window occlusion 1
+1691841253054	geckodriver	INFO	Listening on 127.0.0.1:61654
+1691841256095	mozrunner::runner	INFO	Running command: "C:\\Program Files\\Mozilla Firefox\\firefox.exe" "--marionette" "--headless" "--remote-debugging-port" "616 ... 5" "--remote-allow-hosts" "localhost" "-no-remote" "-profile" "C:\\Users\\gabri\\AppData\\Local\\Temp\\rust_mozprofiles9gYMr"
+*** You are running in headless mode.
+console.warn: services.settings: Ignoring preference override of remote settings server
+console.warn: services.settings: Allow by setting MOZ_REMOTE_SETTINGS_DEVTOOLS=1 in the environment
+1691841256889	Marionette	INFO	Marionette enabled
+Dynamically enable window occlusion 0
+1691841256994	Marionette	INFO	Listening on port 61663
+WebDriver BiDi listening on ws://127.0.0.1:61655
+Read port: 61663
+1691841257429	RemoteAgent	WARN	TLS certificate errors will be ignored for this session
+[GFX1-]: RenderCompositorSWGL failed mapping default framebuffer, no dt
+console.error: ({})
+DevTools listening on ws://127.0.0.1:61655/devtools/browser/7a714dd7-309a-4601-b731-b9dd1ff0f8d1
+console.error: Region.sys.mjs: "Error fetching region" (new Error("TIMEOUT", "resource://gre/modules/Region.sys.mjs", 759))
+console.error: Region.sys.mjs: "Failed to fetch region" (new Error("TIMEOUT", "resource://gre/modules/Region.sys.mjs", 411))
+1691841284244	Marionette	INFO	Stopped listening on port 61663
+Dynamically enable window occlusion 1
