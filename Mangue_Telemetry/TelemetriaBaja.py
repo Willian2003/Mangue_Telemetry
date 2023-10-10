@@ -74,7 +74,6 @@ timestamp_save = []
 
 stop_threads = False
 
-
 def serial_ports():
     if sys.platform.startswith('win'):
         ports = ['COM%s' % (i + 1) for i in range(256)]
