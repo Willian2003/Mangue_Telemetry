@@ -28,7 +28,7 @@ password = 'aratucampeao'
 
 SIZE = 43
 # B = 1by || H = 2by || L(float) = F(int) = 4by || D = 8by
-FORMAT = '<BHHHHHHHHBBBBDLLHF'
+FORMAT = '<BHHHHHHHHBBBBLDDHF'
 
 car = deque(200 * [''], 200)
 accx = deque(200 * [0], 200)
