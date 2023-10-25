@@ -125,8 +125,8 @@ def subscribe(client: mqtt_client, topic):
         volt.append(mqtt_msg_json["volt"])
         latitude.append(mqtt_msg_json["latitude"])
         longitude.append(mqtt_msg_json["longitude"])
-        fuel_level.append(mqtt_msg_json["fuel_level"])
-        timestamp.append(mqtt_msg_json["timestamp"])
+        #fuel_level.append(mqtt_msg_json["fuel_level"])
+        #timestamp.append(mqtt_msg_json["timestamp"])
 
 
     client.subscribe(topic)
@@ -521,8 +521,8 @@ class Ui_MainWindow(object):
 
             self.batt.setText(f"Bateria = {soc[-1]}%")
 
-            self.temp_cvt.setText(f"CVT = {sig_tempcvt[-1]}ºC")
-            self.temp_motor.setText(f"Motor = {sig_tempmotor[-1]}ºC")
+            self.temp_cvt.setText(f"CVT = {temp_cvt[-1]}ºC")
+            self.temp_motor.setText(f"Motor = {round(temp_motor[-1], 1)}ºC")
 
             if fuel_level[-1] != 0:
                 self.fuel.setPixmap(QtGui.QPixmap("fuel_full_vector.jpg"))
@@ -564,16 +564,15 @@ class Ui_MainWindow(object):
             self.acc_z.setText(f"Acc z = {round(accz[-1], 1)}g")
 
             self.batt.setText(f"Bateria = {soc[-1]}%")
+            self.temp_cvt.setText(f"CVT = {round(sig_tempcvt[-1])}ºC")
+            self.temp_motor.setText(f"Motor = {round(sig_tempmotor[-1])}ºC")
 
-            self.temp_cvt.setText(f"CVT = {sig_tempcvt[-1]}ºC")
-            self.temp_motor.setText(f"Motor = {sig_tempmotor[-1]}ºC")
-
-            if fuel_level[-1] != 0:
-                self.fuel.setPixmap(QtGui.QPixmap("fuel_full_vector.jpg"))
-                self.fuel.setScaledContents(True)
-            else:
-                self.fuel.setPixmap(QtGui.QPixmap("fuel_empty_vector.jpg"))
-                self.fuel.setScaledContents(True)
+            #if fuel_level[-1] != 0:
+            self.fuel.setPixmap(QtGui.QPixmap("fuel_full_vector.jpg"))
+            #    self.fuel.setScaledContents(True)
+            #else:
+            #    self.fuel.setPixmap(QtGui.QPixmap("fuel_empty_vector.jpg"))
+            #    self.fuel.setScaledContents(True)
 
             time.sleep(0.5)
 
