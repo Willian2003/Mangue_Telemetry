@@ -21,9 +21,9 @@ Exemplo completo funcional:
         self.fuel.setPixmap(QtGui.QPixmap("fuel_full.jpg"))
         self.fuel.setScaledContents(True) 
 
-Para o mapa inclua OBRIGATORIAMENTE A BIBLIOTECA FOLIUM E O MOZILLA FIREFOX(o navegador
+Para o mapa inclua OBRIGATORIAMENTE A BIBLIOTECA FOLIUM(versão 0.14.0) E O MOZILLA FIREFOX(o navegador
 pode ser baixado por fora mesmo(link para instalar no site:https: //www.mozilla.org/pt-BR/firefox/new/)
-E INSTALE A BIBLIOTECA SELENIUM
+E INSTALE A BIBLIOTECA SELENIUM(versão 4.8.3)
 
 Em def update_map procure por _to_png e aperte ctrl+click para ir diretamente para 
 sua definação. Desça um pouco e quando avistar: 
