@@ -388,6 +388,13 @@ class Ui_MainWindow(object):
         #self.fuel.setPixmap(QtGui.QPixmap("fuel_empty_vector.jpg"))
         #self.fuel.setScaledContents(True)
 
+        self.logo = QtWidgets.QLabel(self.centralwidget)
+        self.logo.setGeometry(QtCore.QRect(510, 80, 160, 160))
+        self.logo.setObjectName("MangueBajaLogo")
+        self.logo.setText("")
+        self.logo.setPixmap(QtGui.QPixmap("Files_image/MANGUE-BAJA-LOGO-C-ESTRELA.ico"))
+        self.logo.setScaledContents(True)
+
         self.batt = QtWidgets.QLabel(self.centralwidget)
         self.batt.setGeometry(QtCore.QRect(700, 110, 200, 110))
         self.batt.setObjectName("batt")
@@ -478,7 +485,7 @@ class Ui_MainWindow(object):
             location=coordinate
         )
         folium.Marker(location=coordinate).add_to(self.m)
-        self.m.save("Mangue_Telemetry/Files_image/map.html")
+        self.m.save("Files_image/map.html")
 
         if self.opening:
             img_data = self.m._to_png(1)
