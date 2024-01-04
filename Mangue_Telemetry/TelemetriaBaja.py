@@ -26,6 +26,8 @@ client_id = f'python-mqtt-{random.randint(0, 1000)}'
 username = 'manguebaja'
 password = 'aratucampeao'
 
+AV_topic = "/AV_logging"
+
 SIZE = 43
 # B = 1by || H = 2by || L(float) = F(int) = 4by || D = 8by
 FORMAT = '<BHHHHHHHHBBBBLDDHF'
@@ -73,6 +75,7 @@ fuel_level_save = []
 timestamp_save = []
 
 stop_threads = False
+box_choice = 0
 
 def serial_ports():
     if sys.platform.startswith('win'):
@@ -126,12 +129,27 @@ def subscribe(client: mqtt_client, topic):
         latitude.append(mqtt_msg_json["latitude"])
         longitude.append(mqtt_msg_json["longitude"])
         #fuel_level.append(mqtt_msg_json["fuel_level"])
-        #timestamp.append(mqtt_msg_json["timestamp"])
+        timestamp.append(mqtt_msg_json["timestamp"])
 
 
     client.subscribe(topic)
     client.on_message = on_message
 
+def publish(client: mqtt_client, path):
+    msg = {
+        "speed_av": speed[-1],
+        "rpm_av": rpm[-1],
+        "timestamp": timestamp[-1]
+    }
+    msg_to_json = json.dumps(msg)
+
+    result = client.publish(path, msg_to_json)
+    # result: [0, 1]
+    #status = result[0]
+    #if status == 0:
+    #    print(f"Send `{msg_to_json}` to topic `{path}`")
+    #else:
+    #    print(f"Failed to send message to topic {path}")
 
 class Receiver(threading.Thread):
     def __init__(self, name):
@@ -313,7 +331,6 @@ class Receiver(threading.Thread):
 
         #self.id_count += 1
 
-
 class Ui_MainWindow(object):
     def __init__(self):
         self.webView = QWebEngineView()
@@ -364,12 +381,12 @@ class Ui_MainWindow(object):
         self.acc_z.setObjectName("acc_z")
         self.acc_z.setFont(font)
 
-        self.fuel = QtWidgets.QLabel(self.centralwidget)
-        self.fuel.setGeometry(QtCore.QRect(510, 60, 161, 200))
-        self.fuel.setObjectName("fuel")
-        self.fuel.setText("")
-        self.fuel.setPixmap(QtGui.QPixmap("fuel_empty_vector.jpg"))
-        self.fuel.setScaledContents(True)
+        #self.fuel = QtWidgets.QLabel(self.centralwidget)
+        #self.fuel.setGeometry(QtCore.QRect(510, 60, 161, 200))
+        #self.fuel.setObjectName("fuel")
+        #self.fuel.setText("")
+        #self.fuel.setPixmap(QtGui.QPixmap("fuel_empty_vector.jpg"))
+        #self.fuel.setScaledContents(True)
 
         self.batt = QtWidgets.QLabel(self.centralwidget)
         self.batt.setGeometry(QtCore.QRect(700, 110, 200, 110))
@@ -390,10 +407,14 @@ class Ui_MainWindow(object):
         self.comboBox.setGeometry(QtCore.QRect(570, 370, 181, 31))
         self.comboBox.setObjectName("comboBox")
         self.comboBox.addItem("")
+        self.comboBox.addItem("")
+        self.comboBox.setCurrentIndex(0)
+
 
         self.pushButton = QtWidgets.QPushButton(self.centralwidget)
         self.pushButton.setGeometry(QtCore.QRect(770, 370, 101, 31))
         self.pushButton.setObjectName("pushButton")
+        self.pushButton.clicked.connect(self.box_clicked)
 
         MainWindow.setCentralWidget(self.centralwidget)
 
@@ -467,6 +488,14 @@ class Ui_MainWindow(object):
             self.map.setScaledContents(True)
             self.opening = False
 
+    def box_clicked(self):
+        global box_choice
+
+        if self.comboBox.currentText()=="BOX":
+            box_choice = 0
+        elif self.comboBox.currentText()=="AV":
+            box_choice = 1
+
     def stop_clicked(self):
         global stop_threads
         stop_threads = True
@@ -515,21 +544,21 @@ class Ui_MainWindow(object):
             self.update_plots(eixo, sig_rpm, eixo, sig_speed)
             self.update_map((latitude[-1], longitude[-1]))
 
-            self.acc_x.setText(f"Acc x = {round(accx[-1], 1)}g")
-            self.acc_y.setText(f"Acc y = {round(accy[-1], 1)}g")
-            self.acc_z.setText(f"Acc z = {round(accz[-1], 1)}g")
+            self.acc_x.setText(f"Acc x = {round(accx[-1])}g")
+            self.acc_y.setText(f"Acc y = {round(accy[-1])}g")
+            self.acc_z.setText(f"Acc z = {round(accz[-1])}g")
 
             self.batt.setText(f"Bateria = {soc[-1]}%")
 
             self.temp_cvt.setText(f"CVT = {temp_cvt[-1]}ºC")
-            self.temp_motor.setText(f"Motor = {round(temp_motor[-1], 1)}ºC")
+            self.temp_motor.setText(f"Motor = {round(temp_motor[-1])}ºC")
 
-            if fuel_level[-1] != 0:
-                self.fuel.setPixmap(QtGui.QPixmap("fuel_full_vector.jpg"))
-                self.fuel.setScaledContents(True)
-            else:
-                self.fuel.setPixmap(QtGui.QPixmap("fuel_empty_vector.jpg"))
-                self.fuel.setScaledContents(True)
+            #if fuel_level[-1] != 0:
+            #    self.fuel.setPixmap(QtGui.QPixmap("fuel_full_vector.jpg"))
+            #    self.fuel.setScaledContents(True)
+            #else:
+            #    self.fuel.setPixmap(QtGui.QPixmap("fuel_empty_vector.jpg"))
+            #    self.fuel.setScaledContents(True)
 
             time.sleep(0.5)
 
@@ -540,6 +569,8 @@ class Ui_MainWindow(object):
                 break
 
     def start_clicked_mqtt(self):
+        global box_choice
+
         if box.connected_mqtt:
             subscribe(box.client, topic)
         self.cont = 0
@@ -567,8 +598,10 @@ class Ui_MainWindow(object):
             self.temp_cvt.setText(f"CVT = {round(sig_tempcvt[-1])}ºC")
             self.temp_motor.setText(f"Motor = {round(sig_tempmotor[-1])}ºC")
 
+            if box_choice==1:
+                publish(box.client, AV_topic)
             #if fuel_level[-1] != 0:
-            self.fuel.setPixmap(QtGui.QPixmap("fuel_full_vector.jpg"))
+            #self.fuel.setPixmap(QtGui.QPixmap("fuel_full_vector.jpg"))
             #    self.fuel.setScaledContents(True)
             #else:
             #    self.fuel.setPixmap(QtGui.QPixmap("fuel_empty_vector.jpg"))
@@ -586,7 +619,7 @@ class Ui_MainWindow(object):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "Mangue Telemetria"))
 
-        self.update_map((-12.708088, -38.173269))
+        self.update_map((-8.054106, -34.954778))
         self.update_plots([0, 1, 2, 3, 4], [0, 1, 2, 3, 4], [0, 1, 2, 3, 4], [0, 1, 2, 3, 4])
         self.acc_x.setText(_translate("MainWindow", f"Acc x = {0}g"))
         self.acc_y.setText(_translate("MainWindow", f"Acc y = {0}g"))
@@ -595,6 +628,7 @@ class Ui_MainWindow(object):
         self.temp_motor.setText(_translate("MainWindow", f"Motor = {0}ºC"))
         self.temp_cvt.setText(_translate("MainWindow", f"CVT = {0}ºC"))
         self.comboBox.setItemText(0, _translate("MainWindow", "BOX"))
+        self.comboBox.setItemText(1, _translate("MainWindow", "AV"))
         self.pushButton.setText(_translate("MainWindow", "Enviar"))
         self.menuRadio.setTitle(_translate("MainWindow", "Radio"))
         self.menuMQTT.setTitle(_translate("MainWindow", "MQTT"))
@@ -602,7 +636,6 @@ class Ui_MainWindow(object):
         self.actionStopRadio.setText(_translate("MainWindow", "Stop"))
         self.actionStartMQTT.setText(_translate("MainWindow", "Start"))
         self.actionStopMQTT.setText(_translate("MainWindow", "Stop"))
-
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
