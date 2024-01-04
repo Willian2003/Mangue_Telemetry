@@ -344,7 +344,7 @@ class Ui_MainWindow(object):
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
 
-        self.icon = QtGui.QIcon("MANGUE-BAJA-LOGO-C-ESTRELA.ico")
+        self.icon = QtGui.QIcon("Files_image/MANGUE-BAJA-LOGO-C-ESTRELA.ico")
         MainWindow.setWindowIcon(self.icon)
 
         self.map = QtWidgets.QLabel(self.centralwidget)
@@ -478,13 +478,13 @@ class Ui_MainWindow(object):
             location=coordinate
         )
         folium.Marker(location=coordinate).add_to(self.m)
-        self.m.save("map.html")
+        self.m.save("Mangue_Telemetry/Files_image/map.html")
 
         if self.opening:
             img_data = self.m._to_png(1)
             img = Image.open(io.BytesIO(img_data))
-            img.save('map.png')
-            self.map.setPixmap(QtGui.QPixmap("map.png"))
+            img.save('Files_image/map.png')
+            self.map.setPixmap(QtGui.QPixmap("Files_image/map.png"))
             self.map.setScaledContents(True)
             self.opening = False
 
@@ -516,8 +516,8 @@ class Ui_MainWindow(object):
         while True:
             img_data = self.m._to_png(1)
             img = Image.open(io.BytesIO(img_data))
-            img.save('map.png')
-            self.map.setPixmap(QtGui.QPixmap("map.png"))
+            img.save('Files_image/map.png')
+            self.map.setPixmap(QtGui.QPixmap("Files_image/map.png"))
             self.map.setScaledContents(True)
 
             global stop_threads
