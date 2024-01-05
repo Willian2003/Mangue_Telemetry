@@ -204,11 +204,11 @@ class Receiver(threading.Thread):
         c = 0
         while c != b'\xff':
             c = self.com.read()
-            # print(f'trying, {c}')
+            print(f'trying, {c}')
         msg = self.com.read(SIZE)
-        # print(msg)
+        print(msg)
         pckt = list(unpack(FORMAT, msg))
-        # print(pckt)
+        print(pckt)
         # print((pckt[25]/65535)*5000)
 
         if pckt[0] == 22:
@@ -225,7 +225,7 @@ class Receiver(threading.Thread):
             volt.append(pckt[13])
             latitude.append(pckt[14])
             longitude.append(pckt[15])
-            fuel_level.append(pckt[16])
+            #fuel_level.append(pckt[16])
             timestamp.append(pckt[17])
 
             car_save.append("MB2")
@@ -243,7 +243,7 @@ class Receiver(threading.Thread):
             volt_save.append(pckt[13])
             latitude_save.append(pckt[14])
             longitude_save.append(pckt[15])
-            fuel_level_save.append(pckt[16])
+            #fuel_level_save.append(pckt[16])
             timestamp_save.append(pckt[17])
 
         if pckt[0] == 11:
@@ -260,7 +260,7 @@ class Receiver(threading.Thread):
             volt.append(pckt[13])
             latitude.append(pckt[14])
             longitude.append(pckt[15])
-            fuel_level.append(pckt[16])
+            #fuel_level.append(pckt[16])
             timestamp.append(pckt[17])
 
             car_save.append("MB1")
@@ -276,7 +276,7 @@ class Receiver(threading.Thread):
             volt_save.append(pckt[13])
             latitude_save.append(pckt[14])
             longitude_save.append(pckt[15])
-            fuel_level_save.append(pckt[16])
+            #fuel_level_save.append(pckt[16])
             timestamp_save.append(pckt[17])
 
         data = {
@@ -389,10 +389,10 @@ class Ui_MainWindow(object):
         #self.fuel.setScaledContents(True)
 
         self.logo = QtWidgets.QLabel(self.centralwidget)
-        self.logo.setGeometry(QtCore.QRect(510, 80, 160, 160))
+        self.logo.setGeometry(QtCore.QRect(510, 80, 140, 160))
         self.logo.setObjectName("MangueBajaLogo")
         self.logo.setText("")
-        self.logo.setPixmap(QtGui.QPixmap("Files_image/MANGUE-BAJA-LOGO-C-ESTRELA.ico"))
+        self.logo.setPixmap(QtGui.QPixmap("Files_image/patolamangueverde.png"))
         self.logo.setScaledContents(True)
 
         self.batt = QtWidgets.QLabel(self.centralwidget)
