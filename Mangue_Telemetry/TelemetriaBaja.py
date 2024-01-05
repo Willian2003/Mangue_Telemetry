@@ -135,15 +135,8 @@ def subscribe(client: mqtt_client, topic):
     client.subscribe(topic)
     client.on_message = on_message
 
-def publish(client: mqtt_client, path):
-    msg = {
-        "speed_av": speed[-1],
-        "rpm_av": rpm[-1],
-        "timestamp": timestamp[-1]
-    }
-    msg_to_json = json.dumps(msg)
-
-    result = client.publish(path, msg_to_json)
+def publish(client: mqtt_client, path, msg):
+    result = client.publish(path, msg)
     # result: [0, 1]
     #status = result[0]
     #if status == 0:
@@ -336,7 +329,6 @@ class Ui_MainWindow(object):
         self.webView = QWebEngineView()
         self.opening = True
         self.cont = 0
-
 
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -606,7 +598,12 @@ class Ui_MainWindow(object):
             self.temp_motor.setText(f"Motor = {round(sig_tempmotor[-1])}ºC")
 
             if box_choice==1:
-                publish(box.client, AV_topic)
+                msg_to_json = {
+                    "speed_av": speed[-1],
+                    "rpm_av": rpm[-1],
+                    "timestamp": timestamp[-1]
+                }
+                publish(box.client, AV_topic, json.dumps(msg_to_json))
             #if fuel_level[-1] != 0:
             #self.fuel.setPixmap(QtGui.QPixmap("fuel_full_vector.jpg"))
             #    self.fuel.setScaledContents(True)
