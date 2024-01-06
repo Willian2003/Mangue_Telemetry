@@ -5,7 +5,7 @@ import folium
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 import pyqtgraph as pg
 from threading import *
-from struct import unpack
+from struct import unpack_from, error
 from collections import deque
 import threading
 import serial
@@ -28,9 +28,9 @@ password = 'aratucampeao'
 
 AV_topic = "/AV_logging"
 
-SIZE = 43
-# B = 1by || H = 2by || L(float) = F(int) = 4by || D = 8by
-FORMAT = '<BHHHHHHHHBBBBLDDHF'
+SIZE = 56
+# https://docs.python.org/pt-br/3.7/library/struct.html
+FORMAT = '<B6h2H4Bf2dI'
 
 car = deque(200 * [''], 200)
 accx = deque(200 * [0], 200)
@@ -48,7 +48,7 @@ temp_cvt = deque(200 * [0], 200)
 volt = deque(200 * [0], 200)
 latitude = deque(200 * [0], 200)
 longitude = deque(200 * [0], 200)
-fuel_level = deque(200 * [0], 200)
+#fuel_level = deque(200 * [0], 200)
 timestamp = deque(200 * [0], 200)
 eixo = deque(200 * [0], 200)
 
@@ -71,11 +71,12 @@ temp_cvt_save = []
 volt_save = []
 latitude_save = []
 longitude_save = []
-fuel_level_save = []
+#fuel_level_save = []
 timestamp_save = []
 
 stop_threads = False
 box_choice = 0
+radio_start = False
 
 def serial_ports():
     if sys.platform.startswith('win'):
@@ -189,7 +190,12 @@ class Receiver(threading.Thread):
 
         while True:
             try:
-                self.checkData()
+                global radio_start
+                if radio_start:
+                    #print("radio ok\n")
+                    self.checkData()
+                else:
+                    time.sleep(0.5)
             except:
                 break
 
@@ -197,12 +203,15 @@ class Receiver(threading.Thread):
         c = 0
         while c != b'\xff':
             c = self.com.read()
-            print(f'trying, {c}')
+            #print(f'trying, {c}')
         msg = self.com.read(SIZE)
-        print(msg)
-        pckt = list(unpack(FORMAT, msg))
-        print(pckt)
-        # print((pckt[25]/65535)*5000)
+        #print(msg[17])
+        try:
+            pckt = list(unpack_from(FORMAT, msg))
+        except error:
+            #print("erro")
+            pass
+        #print(pckt)
 
         if pckt[0] == 22:
             car.append("MB2")
@@ -244,8 +253,13 @@ class Receiver(threading.Thread):
             accx.append(pckt[1] * 0.061 / 1000)
             accy.append(pckt[2] * 0.061 / 1000)
             accz.append(pckt[3] * 0.061 / 1000)
-            rpm.append((pckt[7] / 65535) * 5000)
-            speed.append((pckt[8] / 65535) * 60)
+            dpsx.append(pckt[4])
+            dpsy.append(pckt[5])
+            dpsy.append(pckt[6])
+            #rpm.append((pckt[7] / 65535) * 5000)
+            rpm.append(pckt[7])
+            #speed.append((pckt[8] / 65535) * 60)
+            speed.append(pckt[8])
             temp_motor.append(pckt[9])
             flags.append(pckt[10])
             soc.append(pckt[11])
@@ -254,14 +268,19 @@ class Receiver(threading.Thread):
             latitude.append(pckt[14])
             longitude.append(pckt[15])
             #fuel_level.append(pckt[16])
-            timestamp.append(pckt[17])
+            timestamp.append(pckt[16])
 
             car_save.append("MB1")
             accx_save.append(pckt[1] * 0.061 / 1000)
             accy_save.append(pckt[2] * 0.061 / 1000)
             accz_save.append(pckt[3] * 0.061 / 1000)
-            rpm_save.append((pckt[7] / 65535) * 5000)
-            speed_save.append((pckt[8] / 65535) * 60)
+            dpsx_save.append(pckt[4])
+            dpsy_save.append(pckt[5])
+            dpsz_save.append(pckt[6])
+            #rpm_save.append((pckt[7] / 65535) * 5000)
+            rpm.append(pckt[7])
+            #speed_save.append((pckt[8] / 65535) * 60)
+            speed.append(pckt[8])
             temp_motor_save.append(pckt[9])
             flags_save.append(pckt[10])
             soc_save.append(pckt[11])
@@ -270,46 +289,49 @@ class Receiver(threading.Thread):
             latitude_save.append(pckt[14])
             longitude_save.append(pckt[15])
             #fuel_level_save.append(pckt[16])
-            timestamp_save.append(pckt[17])
+            timestamp_save.append(pckt[16])
 
-        data = {
-            'Carro': car_save,
-            'Aceleração X': accx_save,
-            'Aceleração Y': accy_save,
-            'Aceleração Z': accz_save,
-            'RPM': rpm_save,
-            'Velocidade': speed_save,
-            'Temperatura Moftor': temp_motor_save,
-            'Flags': flags_save,
-            'State of Charge': soc_save,
-            'Temperatura CVT': temp_cvt_save,
-            'Volts': volt_save,
-            'Latitude': latitude_save,
-            'Longitude': longitude_save,
-            'Nivel de combustivel' : fuel_level_save,
-            'Timestamp': timestamp_save
-        }
-        csv = pd.DataFrame(data, columns=['Carro', 'Aceleração X', 'Aceleração Y', 'Aceleração Z', 'RPM',
-                                          'Velocidade', 'Temperatura Motor', 'Flags', 'State of Charge',
-                                          'Temperatura CVT', 'Volts', 'Latitude', 'Longitude',
-                                          'Nivel de combustivel', 'Timestamp'])
-        csv.to_csv('dados_telemetria.csv')
+        #data = {
+        #    'Carro': car_save,
+        #    'Aceleração X': accx_save,
+        #    'Aceleração Y': accy_save,
+        #    'Aceleração Z': accz_save,
+        #    'RPM': rpm_save,
+        #    'Velocidade': speed_save,
+        #    'Temperatura Moftor': temp_motor_save,
+        #    'Flags': flags_save,
+        #    'State of Charge': soc_save,
+        #    'Temperatura CVT': temp_cvt_save,
+        #    'Volts': volt_save,
+        #    'Latitude': latitude_save,
+        #    'Longitude': longitude_save,
+        #    #'Nivel de combustivel' : fuel_level_save,
+        #    'Timestamp': timestamp_save
+        #}
+        #csv = pd.DataFrame(data, columns=['Carro', 'Aceleração X', 'Aceleração Y', 'Aceleração Z', 'RPM',
+        #                                 'Velocidade', 'Temperatura Motor', 'Flags', 'State of Charge',
+        #                                 'Temperatura CVT', 'Volts', 'Latitude', 'Longitude',
+        #                                 'Nivel de combustivel', 'Timestamp'])
+        #csv = pd.DataFrame(data, columns=['Carro', 'Aceleração X', 'Aceleração Y', 'Aceleração Z', 'RPM',
+        #                                    'Velocidade', 'Temperatura Motor', 'Flags', 'State of Charge',
+        #                                    'Temperatura CVT', 'Volts', 'Latitude', 'Longitude', 'Timestamp'])
+        #csv.to_csv('dados_telemetria.csv')
 
-        sqlmsg = list()
-        sqlmsg.append(str(car[-1]))
-        sqlmsg.append(str(accx[-1]))
-        sqlmsg.append(str(accy[-1]))
-        sqlmsg.append(str(accz[-1]))
-        sqlmsg.append(str(rpm[-1]))
-        sqlmsg.append(str(speed[-1]))
-        sqlmsg.append(str(temp_motor[-1]))
-        sqlmsg.append(str(flags[-1]))
-        sqlmsg.append(str(soc[-1]))
-        sqlmsg.append(str(temp_cvt[-1]))
-        sqlmsg.append(str(volt[-1]))
-        sqlmsg.append(str(latitude[-1]))
-        sqlmsg.append(str(longitude[-1]))
-        sqlmsg.append(str(timestamp[-1]))
+        #sqlmsg = list()
+        #sqlmsg.append(str(car[-1]))
+        #sqlmsg.append(str(accx[-1]))
+        #sqlmsg.append(str(accy[-1]))
+        #sqlmsg.append(str(accz[-1]))
+        #sqlmsg.append(str(rpm[-1]))
+        #sqlmsg.append(str(speed[-1]))
+        #sqlmsg.append(str(temp_motor[-1]))
+        #sqlmsg.append(str(flags[-1]))
+        #sqlmsg.append(str(soc[-1]))
+        #sqlmsg.append(str(temp_cvt[-1]))
+        #sqlmsg.append(str(volt[-1]))
+        #sqlmsg.append(str(latitude[-1]))
+        #sqlmsg.append(str(longitude[-1]))
+        #sqlmsg.append(str(timestamp[-1]))
 
         #try:
             #self.conn.execute("INSERT INTO aquisitions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -497,9 +519,14 @@ class Ui_MainWindow(object):
 
     def stop_clicked(self):
         global stop_threads
+        global radio_start
+
         stop_threads = True
+        radio_start = False
 
     def thread_radio(self):
+        global radio_start
+        radio_start = True
         self.t1 = Thread(target=self.start_clicked_radio)
         self.t1.start()
         self.t2 = Thread(target=self.thread_map)
