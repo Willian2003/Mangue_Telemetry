@@ -1,3 +1,6 @@
+import os.path
+import struct
+
 from PyQt5 import QtCore, QtGui, QtWidgets
 import sys
 import io
@@ -5,7 +8,7 @@ import folium
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 import pyqtgraph as pg
 from threading import *
-from struct import unpack
+from struct import unpack_from
 from collections import deque
 import threading
 import serial
@@ -26,9 +29,11 @@ client_id = f'python-mqtt-{random.randint(0, 1000)}'
 username = 'manguebaja'
 password = 'aratucampeao'
 
-SIZE = 43
-# B = 1by || H = 2by || L(float) = F(int) = 4by || D = 8by
-FORMAT = '<BHHHHHHHHBBBBLDDHF'
+AV_topic = "/AV_logging"
+
+SIZE = 56
+# https://docs.python.org/pt-br/3.7/library/struct.html
+FORMAT = '<B6h2H4Bf2dI'
 
 car = deque(200 * [''], 200)
 accx = deque(200 * [0], 200)
@@ -46,7 +51,7 @@ temp_cvt = deque(200 * [0], 200)
 volt = deque(200 * [0], 200)
 latitude = deque(200 * [0], 200)
 longitude = deque(200 * [0], 200)
-fuel_level = deque(200 * [0], 200)
+#fuel_level = deque(200 * [0], 200)
 timestamp = deque(200 * [0], 200)
 eixo = deque(200 * [0], 200)
 
@@ -69,10 +74,12 @@ temp_cvt_save = []
 volt_save = []
 latitude_save = []
 longitude_save = []
-fuel_level_save = []
+#fuel_level_save = []
 timestamp_save = []
 
 stop_threads = False
+box_choice = 0
+radio_start = False
 
 def serial_ports():
     if sys.platform.startswith('win'):
@@ -105,6 +112,7 @@ def connect_mqtt(broker, port, client_id, username, password):
     client.username_pw_set(username, password)
     client.on_connect = on_connect
     client.connect(broker, port)
+
     return client
 
 def subscribe(client: mqtt_client, topic):
@@ -126,12 +134,20 @@ def subscribe(client: mqtt_client, topic):
         latitude.append(mqtt_msg_json["latitude"])
         longitude.append(mqtt_msg_json["longitude"])
         #fuel_level.append(mqtt_msg_json["fuel_level"])
-        #timestamp.append(mqtt_msg_json["timestamp"])
+        timestamp.append(mqtt_msg_json["timestamp"])
 
 
     client.subscribe(topic)
     client.on_message = on_message
 
+def publish(client: mqtt_client, path, msg):
+    result = client.publish(path, msg)
+    # result: [0, 1]
+    #status = result[0]
+    #if status == 0:
+    #    print(f"Send `{msg_to_json}` to topic `{path}`")
+    #else:
+    #    print(f"Failed to send message to topic {path}")
 
 class Receiver(threading.Thread):
     def __init__(self, name):
@@ -139,6 +155,8 @@ class Receiver(threading.Thread):
         self.com = self.connectSerial(serial_ports())
         print(f'Connected into {self.com}')
         self.connected_mqtt = True
+        self.DIR = os.path.dirname(os.path.abspath(__file__))
+        self.csv_path = os.path.join(self.DIR, "dados_telemetria.csv")
         try:
             self.client = connect_mqtt(broker, port, client_id, username, password)
             self.client.loop_start()
@@ -176,9 +194,38 @@ class Receiver(threading.Thread):
     def run(self):
         self.com.flush()
 
+        data = [
+            'Carro',
+            'Aceleração X',
+            'Aceleração Y',
+            'Aceleração Z',
+            'DPS X',
+            'DPS Y',
+            'DPS Z',
+            'RPM',
+            'Velocidade',
+            'Temperatura Motor',
+            'Flags',
+            'State of Charge',
+            'Temperatura CVT',
+            'Volts',
+            'Latitude',
+            'Longitude',
+            #'Nivel de combustivel',
+            'Timestamp'
+        ]
+
+        csv_baja = pd.DataFrame(columns=data)
+        csv_baja.to_csv(self.csv_path, index=False)
+
         while True:
             try:
-                self.checkData()
+                global radio_start
+                if radio_start:
+                    #print("radio ok\n")
+                    self.checkData()
+                else:
+                    time.sleep(0.5)
             except:
                 break
 
@@ -186,20 +233,28 @@ class Receiver(threading.Thread):
         c = 0
         while c != b'\xff':
             c = self.com.read()
-            # print(f'trying, {c}')
+            #print(f'trying, {c}')
         msg = self.com.read(SIZE)
-        # print(msg)
-        pckt = list(unpack(FORMAT, msg))
-        # print(pckt)
-        # print((pckt[25]/65535)*5000)
+        #print(msg[17])
+        try:
+            pckt = list(unpack_from(FORMAT, msg))
+        except struct.error:
+            #print("erro")
+            pass
+        #print(pckt)
 
         if pckt[0] == 22:
             car.append("MB2")
             accx.append(pckt[1] * 0.061 / 1000)
             accy.append(pckt[2] * 0.061 / 1000)
             accz.append(pckt[3] * 0.061 / 1000)
-            rpm.append((pckt[7] / 65535) * 5000)
-            speed.append((pckt[8] / 65535) * 60)
+            dpsx.append(pckt[4])
+            dpsy.append(pckt[5])
+            dpsy.append(pckt[6])
+            # rpm.append((pckt[7] / 65535) * 5000)
+            rpm.append(pckt[7])
+            # speed.append((pckt[8] / 65535) * 60)
+            speed.append(pckt[8])
             temp_motor.append(pckt[9])
             flags.append(pckt[10])
             soc.append(pckt[11])
@@ -207,17 +262,20 @@ class Receiver(threading.Thread):
             volt.append(pckt[13])
             latitude.append(pckt[14])
             longitude.append(pckt[15])
-            fuel_level.append(pckt[16])
-            timestamp.append(pckt[17])
+            # fuel_level.append(pckt[16])
+            timestamp.append(pckt[16])
 
-            car_save.append("MB2")
+            car_save.append("MB1")
             accx_save.append(pckt[1] * 0.061 / 1000)
             accy_save.append(pckt[2] * 0.061 / 1000)
             accz_save.append(pckt[3] * 0.061 / 1000)
-            rpm_save.append((pckt[7] / 65535) * 5000)
-            rpm_save.append(pckt[7])
-            speed_save.append((pckt[8] / 65535) * 60)
-            speed_save.append(pckt[8])
+            dpsx_save.append(pckt[4])
+            dpsy_save.append(pckt[5])
+            dpsz_save.append(pckt[6])
+            # rpm_save.append((pckt[7] / 65535) * 5000)
+            rpm.append(pckt[7])
+            # speed_save.append((pckt[8] / 65535) * 60)
+            speed.append(pckt[8])
             temp_motor_save.append(pckt[9])
             flags_save.append(pckt[10])
             soc_save.append(pckt[11])
@@ -225,16 +283,21 @@ class Receiver(threading.Thread):
             volt_save.append(pckt[13])
             latitude_save.append(pckt[14])
             longitude_save.append(pckt[15])
-            fuel_level_save.append(pckt[16])
-            timestamp_save.append(pckt[17])
+            # fuel_level_save.append(pckt[16])
+            timestamp_save.append(pckt[16])
 
         if pckt[0] == 11:
             car.append("MB1")
             accx.append(pckt[1] * 0.061 / 1000)
             accy.append(pckt[2] * 0.061 / 1000)
             accz.append(pckt[3] * 0.061 / 1000)
-            rpm.append((pckt[7] / 65535) * 5000)
-            speed.append((pckt[8] / 65535) * 60)
+            dpsx.append(pckt[4])
+            dpsy.append(pckt[5])
+            dpsy.append(pckt[6])
+            #rpm.append((pckt[7] / 65535) * 5000)
+            rpm.append(pckt[7])
+            #speed.append((pckt[8] / 65535) * 60)
+            speed.append(pckt[8])
             temp_motor.append(pckt[9])
             flags.append(pckt[10])
             soc.append(pckt[11])
@@ -242,15 +305,20 @@ class Receiver(threading.Thread):
             volt.append(pckt[13])
             latitude.append(pckt[14])
             longitude.append(pckt[15])
-            fuel_level.append(pckt[16])
-            timestamp.append(pckt[17])
+            #fuel_level.append(pckt[16])
+            timestamp.append(pckt[16])
 
             car_save.append("MB1")
             accx_save.append(pckt[1] * 0.061 / 1000)
             accy_save.append(pckt[2] * 0.061 / 1000)
             accz_save.append(pckt[3] * 0.061 / 1000)
-            rpm_save.append((pckt[7] / 65535) * 5000)
-            speed_save.append((pckt[8] / 65535) * 60)
+            dpsx_save.append(pckt[4])
+            dpsy_save.append(pckt[5])
+            dpsz_save.append(pckt[6])
+            #rpm_save.append((pckt[7] / 65535) * 5000)
+            rpm.append(pckt[7])
+            #speed_save.append((pckt[8] / 65535) * 60)
+            speed.append(pckt[8])
             temp_motor_save.append(pckt[9])
             flags_save.append(pckt[10])
             soc_save.append(pckt[11])
@@ -258,47 +326,51 @@ class Receiver(threading.Thread):
             volt_save.append(pckt[13])
             latitude_save.append(pckt[14])
             longitude_save.append(pckt[15])
-            fuel_level_save.append(pckt[16])
-            timestamp_save.append(pckt[17])
+            #fuel_level_save.append(pckt[16])
+            timestamp_save.append(pckt[16])
 
-        data = {
-            'Carro': car_save,
-            'Aceleração X': accx_save,
-            'Aceleração Y': accy_save,
-            'Aceleração Z': accz_save,
-            'RPM': rpm_save,
-            'Velocidade': speed_save,
-            'Temperatura Moftor': temp_motor_save,
-            'Flags': flags_save,
-            'State of Charge': soc_save,
-            'Temperatura CVT': temp_cvt_save,
-            'Volts': volt_save,
-            'Latitude': latitude_save,
-            'Longitude': longitude_save,
-            'Nivel de combustivel' : fuel_level_save,
-            'Timestamp': timestamp_save
-        }
-        csv = pd.DataFrame(data, columns=['Carro', 'Aceleração X', 'Aceleração Y', 'Aceleração Z', 'RPM',
-                                          'Velocidade', 'Temperatura Motor', 'Flags', 'State of Charge',
-                                          'Temperatura CVT', 'Volts', 'Latitude', 'Longitude',
-                                          'Nivel de combustivel', 'Timestamp'])
-        csv.to_csv('dados_telemetria.csv')
+        if len(car_save)!=0:
+            DATA = {
+                'Carro': car_save[-1],
+                'Aceleração X': accx_save[-1],
+                'Aceleração Y': accy_save[-1],
+                'Aceleração Z': accz_save[-1],
+                'DPS X': dpsx_save[-1],
+                'DPS Y': dpsy_save[-1],
+                'DPS Z': dpsz_save[-1],
+                'RPM': rpm_save[-1],
+                'Velocidade': speed_save[-1],
+                'Temperatura Motor': temp_motor_save[-1],
+                'Flags': flags_save[-1],
+                'State of Charge': soc_save[-1],
+                'Temperatura CVT': temp_cvt_save[-1],
+                'Volts': volt_save[-1],
+                'Latitude': latitude_save[-1],
+                'Longitude': longitude_save[-1],
+                #'Nivel de combustivel' : fuel_level_save[-1],
+                'Timestamp': timestamp_save[-1]
+            }
+            csv = pd.DataFrame([DATA])
 
-        sqlmsg = list()
-        sqlmsg.append(str(car[-1]))
-        sqlmsg.append(str(accx[-1]))
-        sqlmsg.append(str(accy[-1]))
-        sqlmsg.append(str(accz[-1]))
-        sqlmsg.append(str(rpm[-1]))
-        sqlmsg.append(str(speed[-1]))
-        sqlmsg.append(str(temp_motor[-1]))
-        sqlmsg.append(str(flags[-1]))
-        sqlmsg.append(str(soc[-1]))
-        sqlmsg.append(str(temp_cvt[-1]))
-        sqlmsg.append(str(volt[-1]))
-        sqlmsg.append(str(latitude[-1]))
-        sqlmsg.append(str(longitude[-1]))
-        sqlmsg.append(str(timestamp[-1]))
+            csv_baja = pd.read_csv(self.csv_path)
+            csv_baja = pd.concat([csv_baja, csv])
+            csv_baja.to_csv(self.csv_path, index=False)
+
+        #sqlmsg = list()
+        #sqlmsg.append(str(car[-1]))
+        #sqlmsg.append(str(accx[-1]))
+        #sqlmsg.append(str(accy[-1]))
+        #sqlmsg.append(str(accz[-1]))
+        #sqlmsg.append(str(rpm[-1]))
+        #sqlmsg.append(str(speed[-1]))
+        #sqlmsg.append(str(temp_motor[-1]))
+        #sqlmsg.append(str(flags[-1]))
+        #sqlmsg.append(str(soc[-1]))
+        #sqlmsg.append(str(temp_cvt[-1]))
+        #sqlmsg.append(str(volt[-1]))
+        #sqlmsg.append(str(latitude[-1]))
+        #sqlmsg.append(str(longitude[-1]))
+        #sqlmsg.append(str(timestamp[-1]))
 
         #try:
             #self.conn.execute("INSERT INTO aquisitions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -313,13 +385,11 @@ class Receiver(threading.Thread):
 
         #self.id_count += 1
 
-
 class Ui_MainWindow(object):
     def __init__(self):
         self.webView = QWebEngineView()
         self.opening = True
         self.cont = 0
-
 
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -327,7 +397,7 @@ class Ui_MainWindow(object):
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
 
-        self.icon = QtGui.QIcon("MANGUE-BAJA-LOGO-C-ESTRELA.ico")
+        self.icon = QtGui.QIcon("Files_image/MANGUE-BAJA-LOGO-C-ESTRELA.ico")
         MainWindow.setWindowIcon(self.icon)
 
         self.map = QtWidgets.QLabel(self.centralwidget)
@@ -364,12 +434,19 @@ class Ui_MainWindow(object):
         self.acc_z.setObjectName("acc_z")
         self.acc_z.setFont(font)
 
-        self.fuel = QtWidgets.QLabel(self.centralwidget)
-        self.fuel.setGeometry(QtCore.QRect(510, 60, 161, 200))
-        self.fuel.setObjectName("fuel")
-        self.fuel.setText("")
-        self.fuel.setPixmap(QtGui.QPixmap("fuel_empty_vector.jpg"))
-        self.fuel.setScaledContents(True)
+        #self.fuel = QtWidgets.QLabel(self.centralwidget)
+        #self.fuel.setGeometry(QtCore.QRect(510, 60, 161, 200))
+        #self.fuel.setObjectName("fuel")
+        #self.fuel.setText("")
+        #self.fuel.setPixmap(QtGui.QPixmap("fuel_empty_vector.jpg"))
+        #self.fuel.setScaledContents(True)
+
+        self.logo = QtWidgets.QLabel(self.centralwidget)
+        self.logo.setGeometry(QtCore.QRect(510, 80, 140, 160))
+        self.logo.setObjectName("MangueBajaLogo")
+        self.logo.setText("")
+        self.logo.setPixmap(QtGui.QPixmap("Files_image/patolamangueverde.png"))
+        self.logo.setScaledContents(True)
 
         self.batt = QtWidgets.QLabel(self.centralwidget)
         self.batt.setGeometry(QtCore.QRect(700, 110, 200, 110))
@@ -390,10 +467,13 @@ class Ui_MainWindow(object):
         self.comboBox.setGeometry(QtCore.QRect(570, 370, 181, 31))
         self.comboBox.setObjectName("comboBox")
         self.comboBox.addItem("")
+        self.comboBox.addItem("")
+        self.comboBox.setCurrentIndex(0)
 
         self.pushButton = QtWidgets.QPushButton(self.centralwidget)
         self.pushButton.setGeometry(QtCore.QRect(770, 370, 101, 31))
         self.pushButton.setObjectName("pushButton")
+        self.pushButton.clicked.connect(self.box_clicked)
 
         MainWindow.setCentralWidget(self.centralwidget)
 
@@ -457,21 +537,35 @@ class Ui_MainWindow(object):
             location=coordinate
         )
         folium.Marker(location=coordinate).add_to(self.m)
-        self.m.save("map.html")
+        self.m.save("Files_image/map.html")
 
         if self.opening:
             img_data = self.m._to_png(1)
             img = Image.open(io.BytesIO(img_data))
-            img.save('map.png')
-            self.map.setPixmap(QtGui.QPixmap("map.png"))
+            img.save('Files_image/map.png')
+            self.map.setPixmap(QtGui.QPixmap("Files_image/map.png"))
             self.map.setScaledContents(True)
             self.opening = False
 
+    def box_clicked(self):
+        global box_choice
+
+        if self.comboBox.currentText()=="BOX":
+            box_choice = 0
+        elif self.comboBox.currentText()=="AV":
+            box_choice = 1
+
     def stop_clicked(self):
         global stop_threads
+        global radio_start
+
         stop_threads = True
+        radio_start = False
 
     def thread_radio(self):
+        global radio_start
+        radio_start = True
+
         self.t1 = Thread(target=self.start_clicked_radio)
         self.t1.start()
         self.t2 = Thread(target=self.thread_map)
@@ -487,8 +581,8 @@ class Ui_MainWindow(object):
         while True:
             img_data = self.m._to_png(1)
             img = Image.open(io.BytesIO(img_data))
-            img.save('map.png')
-            self.map.setPixmap(QtGui.QPixmap("map.png"))
+            img.save('Files_image/map.png')
+            self.map.setPixmap(QtGui.QPixmap("Files_image/map.png"))
             self.map.setScaledContents(True)
 
             global stop_threads
@@ -515,21 +609,21 @@ class Ui_MainWindow(object):
             self.update_plots(eixo, sig_rpm, eixo, sig_speed)
             self.update_map((latitude[-1], longitude[-1]))
 
-            self.acc_x.setText(f"Acc x = {round(accx[-1], 1)}g")
-            self.acc_y.setText(f"Acc y = {round(accy[-1], 1)}g")
-            self.acc_z.setText(f"Acc z = {round(accz[-1], 1)}g")
+            self.acc_x.setText(f"Acc x = {round(accx[-1])}g")
+            self.acc_y.setText(f"Acc y = {round(accy[-1])}g")
+            self.acc_z.setText(f"Acc z = {round(accz[-1])}g")
 
             self.batt.setText(f"Bateria = {soc[-1]}%")
 
             self.temp_cvt.setText(f"CVT = {temp_cvt[-1]}ºC")
-            self.temp_motor.setText(f"Motor = {round(temp_motor[-1], 1)}ºC")
+            self.temp_motor.setText(f"Motor = {round(temp_motor[-1])}ºC")
 
-            if fuel_level[-1] != 0:
-                self.fuel.setPixmap(QtGui.QPixmap("fuel_full_vector.jpg"))
-                self.fuel.setScaledContents(True)
-            else:
-                self.fuel.setPixmap(QtGui.QPixmap("fuel_empty_vector.jpg"))
-                self.fuel.setScaledContents(True)
+            #if fuel_level[-1] != 0:
+            #    self.fuel.setPixmap(QtGui.QPixmap("fuel_full_vector.jpg"))
+            #    self.fuel.setScaledContents(True)
+            #else:
+            #    self.fuel.setPixmap(QtGui.QPixmap("fuel_empty_vector.jpg"))
+            #    self.fuel.setScaledContents(True)
 
             time.sleep(0.5)
 
@@ -540,6 +634,8 @@ class Ui_MainWindow(object):
                 break
 
     def start_clicked_mqtt(self):
+        global box_choice
+
         if box.connected_mqtt:
             subscribe(box.client, topic)
         self.cont = 0
@@ -567,8 +663,15 @@ class Ui_MainWindow(object):
             self.temp_cvt.setText(f"CVT = {round(sig_tempcvt[-1])}ºC")
             self.temp_motor.setText(f"Motor = {round(sig_tempmotor[-1])}ºC")
 
+            if box_choice==1:
+                msg_to_json = {
+                    "speed_av": speed[-1],
+                    "rpm_av": rpm[-1],
+                    "timestamp": timestamp[-1]
+                }
+                publish(box.client, AV_topic, json.dumps(msg_to_json))
             #if fuel_level[-1] != 0:
-            self.fuel.setPixmap(QtGui.QPixmap("fuel_full_vector.jpg"))
+            #self.fuel.setPixmap(QtGui.QPixmap("fuel_full_vector.jpg"))
             #    self.fuel.setScaledContents(True)
             #else:
             #    self.fuel.setPixmap(QtGui.QPixmap("fuel_empty_vector.jpg"))
@@ -586,7 +689,7 @@ class Ui_MainWindow(object):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "Mangue Telemetria"))
 
-        self.update_map((-12.708088, -38.173269))
+        self.update_map((-8.054106, -34.954778))
         self.update_plots([0, 1, 2, 3, 4], [0, 1, 2, 3, 4], [0, 1, 2, 3, 4], [0, 1, 2, 3, 4])
         self.acc_x.setText(_translate("MainWindow", f"Acc x = {0}g"))
         self.acc_y.setText(_translate("MainWindow", f"Acc y = {0}g"))
@@ -595,6 +698,7 @@ class Ui_MainWindow(object):
         self.temp_motor.setText(_translate("MainWindow", f"Motor = {0}ºC"))
         self.temp_cvt.setText(_translate("MainWindow", f"CVT = {0}ºC"))
         self.comboBox.setItemText(0, _translate("MainWindow", "BOX"))
+        self.comboBox.setItemText(1, _translate("MainWindow", "AV"))
         self.pushButton.setText(_translate("MainWindow", "Enviar"))
         self.menuRadio.setTitle(_translate("MainWindow", "Radio"))
         self.menuMQTT.setTitle(_translate("MainWindow", "MQTT"))
@@ -602,7 +706,6 @@ class Ui_MainWindow(object):
         self.actionStopRadio.setText(_translate("MainWindow", "Stop"))
         self.actionStartMQTT.setText(_translate("MainWindow", "Start"))
         self.actionStopMQTT.setText(_translate("MainWindow", "Stop"))
-
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
