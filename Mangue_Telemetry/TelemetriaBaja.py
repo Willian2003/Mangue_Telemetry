@@ -1,6 +1,3 @@
-import os.path
-import struct
-
 from PyQt5 import QtCore, QtGui, QtWidgets
 import sys
 import io
@@ -14,6 +11,7 @@ import threading
 import serial
 from scipy import signal
 import glob
+import os
 import time
 from PIL import Image
 import random
