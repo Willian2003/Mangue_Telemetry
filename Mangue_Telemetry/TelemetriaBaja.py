@@ -1,20 +1,25 @@
+###### Qt Designs IMPORTS ######
 from PyQt5 import QtCore, QtGui, QtWidgets
-import sys
-import io
-import folium
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 import pyqtgraph as pg
+###### Graphcs IMPORTS ######
+from PIL import Image
+import folium
+###### System IMPORTS ######
 from threading import *
-from struct import unpack_from
-from collections import deque
 import threading
-import serial
-from scipy import signal
+import sys
+import io
 import glob
 import os
 import time
-from PIL import Image
 import random
+###### Data IMPORTS ######
+from scipy import signal
+from collections import deque
+import struct
+import serial
+###### Conectivity IMPORTS ######
 from paho.mqtt import client as mqtt_client
 import sqlite3
 import json
@@ -153,9 +158,11 @@ class Receiver(threading.Thread):
         threading.Thread.__init__(self, name=name)
         self.com = self.connectSerial(serial_ports())
         print(f'Connected into {self.com}')
-        self.connected_mqtt = True
+
         self.DIR = os.path.dirname(os.path.abspath(__file__))
-        self.csv_path = os.path.join(self.DIR, "dados_telemetria.csv")
+        self.csv_path = os.path.join(self.DIR, "Backup\\dados_telemetria.csv")
+
+        self.connected_mqtt = True
         try:
             self.client = connect_mqtt(broker, port, client_id, username, password)
             self.client.loop_start()
@@ -193,26 +200,9 @@ class Receiver(threading.Thread):
     def run(self):
         self.com.flush()
 
-        data = [
-            'Carro',
-            'Aceleração X',
-            'Aceleração Y',
-            'Aceleração Z',
-            'DPS X',
-            'DPS Y',
-            'DPS Z',
-            'RPM',
-            'Velocidade',
-            'Temperatura Motor',
-            'Flags',
-            'State of Charge',
-            'Temperatura CVT',
-            'Volts',
-            'Latitude',
-            'Longitude',
-            #'Nivel de combustivel',
-            'Timestamp'
-        ]
+        data = ['Carro', 'Aceleracao X', 'Aceleracao Y', 'Aceleracao Z', 'DPS X',
+                'DPS Y', 'DPS Z', 'RPM', 'Velocidade', 'Temperatura Motor', 'Flags',
+                'State of Charge', 'Temperatura CVT', 'Volts', 'Latitude', 'Longitude', 'Timestamp']
 
         csv_baja = pd.DataFrame(columns=data)
         csv_baja.to_csv(self.csv_path, index=False)
@@ -221,7 +211,6 @@ class Receiver(threading.Thread):
             try:
                 global radio_start
                 if radio_start:
-                    #print("radio ok\n")
                     self.checkData()
                 else:
                     time.sleep(0.5)
@@ -236,7 +225,7 @@ class Receiver(threading.Thread):
         msg = self.com.read(SIZE)
         #print(msg[17])
         try:
-            pckt = list(unpack_from(FORMAT, msg))
+            pckt = list(struct.unpack_from(FORMAT, msg))
         except struct.error:
             #print("erro")
             pass
@@ -264,7 +253,7 @@ class Receiver(threading.Thread):
             # fuel_level.append(pckt[16])
             timestamp.append(pckt[16])
 
-            car_save.append("MB1")
+            car_save.append("MB2")
             accx_save.append(pckt[1] * 0.061 / 1000)
             accy_save.append(pckt[2] * 0.061 / 1000)
             accz_save.append(pckt[3] * 0.061 / 1000)
@@ -272,9 +261,9 @@ class Receiver(threading.Thread):
             dpsy_save.append(pckt[5])
             dpsz_save.append(pckt[6])
             # rpm_save.append((pckt[7] / 65535) * 5000)
-            rpm.append(pckt[7])
+            rpm_save.append(pckt[7])
             # speed_save.append((pckt[8] / 65535) * 60)
-            speed.append(pckt[8])
+            speed_save.append(pckt[8])
             temp_motor_save.append(pckt[9])
             flags_save.append(pckt[10])
             soc_save.append(pckt[11])
@@ -315,9 +304,9 @@ class Receiver(threading.Thread):
             dpsy_save.append(pckt[5])
             dpsz_save.append(pckt[6])
             #rpm_save.append((pckt[7] / 65535) * 5000)
-            rpm.append(pckt[7])
+            rpm_save.append(pckt[7])
             #speed_save.append((pckt[8] / 65535) * 60)
-            speed.append(pckt[8])
+            speed_save.append(pckt[8])
             temp_motor_save.append(pckt[9])
             flags_save.append(pckt[10])
             soc_save.append(pckt[11])
@@ -329,31 +318,10 @@ class Receiver(threading.Thread):
             timestamp_save.append(pckt[16])
 
         if len(car_save)!=0:
-            DATA = {
-                'Carro': car_save[-1],
-                'Aceleração X': accx_save[-1],
-                'Aceleração Y': accy_save[-1],
-                'Aceleração Z': accz_save[-1],
-                'DPS X': dpsx_save[-1],
-                'DPS Y': dpsy_save[-1],
-                'DPS Z': dpsz_save[-1],
-                'RPM': rpm_save[-1],
-                'Velocidade': speed_save[-1],
-                'Temperatura Motor': temp_motor_save[-1],
-                'Flags': flags_save[-1],
-                'State of Charge': soc_save[-1],
-                'Temperatura CVT': temp_cvt_save[-1],
-                'Volts': volt_save[-1],
-                'Latitude': latitude_save[-1],
-                'Longitude': longitude_save[-1],
-                #'Nivel de combustivel' : fuel_level_save[-1],
-                'Timestamp': timestamp_save[-1]
-            }
-            csv = pd.DataFrame([DATA])
-
-            csv_baja = pd.read_csv(self.csv_path)
-            csv_baja = pd.concat([csv_baja, csv])
-            csv_baja.to_csv(self.csv_path, index=False)
+            try:
+                self.CSV_Save()
+            except:
+                pass
 
         #sqlmsg = list()
         #sqlmsg.append(str(car[-1]))
@@ -383,6 +351,33 @@ class Receiver(threading.Thread):
             #self.conn.commit()
 
         #self.id_count += 1
+
+    def CSV_Save(self):
+        DATA = {
+            'Carro': car_save[-1],
+            'Aceleracao X': accx_save[-1],
+            'Aceleracao Y': accy_save[-1],
+            'Aceleracao Z': accz_save[-1],
+            'DPS X': dpsx_save[-1],
+            'DPS Y': dpsy_save[-1],
+            'DPS Z': dpsz_save[-1],
+            'RPM': rpm_save[-1],
+            'Velocidade': speed_save[-1],
+            'Temperatura Motor': temp_motor_save[-1],
+            'Flags': flags_save[-1],
+            'State of Charge': soc_save[-1],
+            'Temperatura CVT': temp_cvt_save[-1],
+            'Volts': volt_save[-1],
+            'Latitude': latitude_save[-1],
+            'Longitude': longitude_save[-1],
+            #'Nivel de combustivel' : fuel_level_save[-1],
+            'Timestamp': timestamp_save[-1]
+        }
+        csv = pd.DataFrame([DATA])
+
+        csv_baja = pd.read_csv(self.csv_path)
+        csv_baja = pd.concat([csv_baja, csv])
+        csv_baja.to_csv(self.csv_path, index=False)
 
 class Ui_MainWindow(object):
     def __init__(self):
