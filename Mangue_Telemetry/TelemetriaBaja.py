@@ -58,6 +58,7 @@ eixo = deque(200 * [0], 200)
 b, a = signal.butter(3, 0.15, analog=False)
 c, d = signal.butter(3, 0.5, analog=False)
 
+
 car_save = []
 accx_save = []
 accy_save = []
