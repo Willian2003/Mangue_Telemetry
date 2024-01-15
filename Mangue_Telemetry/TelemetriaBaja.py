@@ -35,7 +35,7 @@ password = 'aratucampeao'
 # DataBase topics #
 AV_topic = "/AV_logging"
 
-SIZE = 56 # Size of message packet
+SIZE = 49 # Size of message packet
 # https://docs.python.org/pt-br/3.7/library/struct.html
 FORMAT = '<B6h2H4Bf2dI'
 
@@ -59,10 +59,8 @@ longitude = deque(200 * [0], 200)
 timestamp = deque(200 * [0], 200)
 eixo = deque(200 * [0], 200)
 
-
 b, a = signal.butter(3, 0.15, analog=False)
 c, d = signal.butter(3, 0.5, analog=False)
-
 
 car_save = []
 accx_save = []
