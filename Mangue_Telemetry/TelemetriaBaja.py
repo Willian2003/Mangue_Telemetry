@@ -32,9 +32,10 @@ client_id = f'python-mqtt-{random.randint(0, 1000)}'
 username = 'manguebaja'
 password = 'aratucampeao'
 
+# DataBase topics #
 AV_topic = "/AV_logging"
 
-SIZE = 56
+SIZE = 56 # Size of message packet
 # https://docs.python.org/pt-br/3.7/library/struct.html
 FORMAT = '<B6h2H4Bf2dI'
 
@@ -57,6 +58,7 @@ longitude = deque(200 * [0], 200)
 #fuel_level = deque(200 * [0], 200)
 timestamp = deque(200 * [0], 200)
 eixo = deque(200 * [0], 200)
+
 
 b, a = signal.butter(3, 0.15, analog=False)
 c, d = signal.butter(3, 0.5, analog=False)
@@ -116,7 +118,6 @@ def connect_mqtt(broker, port, client_id, username, password):
     client.username_pw_set(username, password)
     client.on_connect = on_connect
     client.connect(broker, port)
-
     return client
 
 def subscribe(client: mqtt_client, topic):
@@ -139,7 +140,6 @@ def subscribe(client: mqtt_client, topic):
         longitude.append(mqtt_msg_json["longitude"])
         #fuel_level.append(mqtt_msg_json["fuel_level"])
         timestamp.append(mqtt_msg_json["timestamp"])
-
 
     client.subscribe(topic)
     client.on_message = on_message
