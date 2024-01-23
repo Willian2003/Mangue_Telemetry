@@ -25,6 +25,9 @@ import sqlite3
 import json
 import pandas as pd
 
+# For files path
+DIR = os.path.dirname(os.path.abspath(__file__))
+
 broker = "64.227.19.172"
 port = 1883
 topic = "/logging"
@@ -157,8 +160,7 @@ class Receiver(threading.Thread):
         self.com = self.connectSerial(serial_ports())
         print(f'Connected into {self.com}')
 
-        self.DIR = os.path.dirname(os.path.abspath(__file__))
-        self.csv_path = os.path.join(self.DIR, "Backup\\dados_telemetria.csv")
+        self.csv_path = os.path.join(DIR, "Backup\\dados_telemetria.csv")
 
         self.connected_mqtt = True
         try:
@@ -383,13 +385,18 @@ class Ui_MainWindow(object):
         self.opening = True
         self.cont = 0
 
+        self.map_path = os.path.join(DIR, "Files_image\\map.html")
+        self.mapImg_path = os.path.join(DIR, "Files_image\\map.png")
+        self.ico_path = os.path.join(DIR, "Files_image\\MANGUE-BAJA-LOGO-C-ESTRELA.ico")
+        self.pat_path = os.path.join(DIR, "Files_image\\patolamangueverde.png")
+
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1000, 550)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
 
-        self.icon = QtGui.QIcon("Files_image/MANGUE-BAJA-LOGO-C-ESTRELA.ico")
+        self.icon = QtGui.QIcon(self.ico_path)
         MainWindow.setWindowIcon(self.icon)
 
         self.map = QtWidgets.QLabel(self.centralwidget)
@@ -437,7 +444,7 @@ class Ui_MainWindow(object):
         self.logo.setGeometry(QtCore.QRect(510, 80, 140, 160))
         self.logo.setObjectName("MangueBajaLogo")
         self.logo.setText("")
-        self.logo.setPixmap(QtGui.QPixmap("Files_image/patolamangueverde.png"))
+        self.logo.setPixmap(QtGui.QPixmap(self.pat_path))
         self.logo.setScaledContents(True)
 
         self.batt = QtWidgets.QLabel(self.centralwidget)
@@ -529,13 +536,13 @@ class Ui_MainWindow(object):
             location=coordinate
         )
         folium.Marker(location=coordinate).add_to(self.m)
-        self.m.save("Files_image/map.html")
+        self.m.save(self.map_path)
 
         if self.opening:
             img_data = self.m._to_png(1)
             img = Image.open(io.BytesIO(img_data))
-            img.save('Files_image/map.png')
-            self.map.setPixmap(QtGui.QPixmap("Files_image/map.png"))
+            img.save(self.mapImg_path)
+            self.map.setPixmap(QtGui.QPixmap(self.mapImg_path))
             self.map.setScaledContents(True)
             self.opening = False
 
@@ -573,8 +580,8 @@ class Ui_MainWindow(object):
         while True:
             img_data = self.m._to_png(1)
             img = Image.open(io.BytesIO(img_data))
-            img.save('Files_image/map.png')
-            self.map.setPixmap(QtGui.QPixmap("Files_image/map.png"))
+            img.save(self.mapImg_path)
+            self.map.setPixmap(QtGui.QPixmap(self.mapImg_path))
             self.map.setScaledContents(True)
 
             global stop_threads
