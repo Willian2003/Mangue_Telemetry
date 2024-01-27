@@ -6,6 +6,8 @@ das competições e validações. A comunicação da telemetria pode ser tanto v
 protocolo MQTT, e também está inclusa nessa GUI o processamento usando filtragem do tipo `Butterworth` nas informações 
 recebidas do veículo. 
 
+<img src="img.png" alt="GUI">
+
 ## IMPORTANTE PARA O FUNCIONAMENTO
 ### (O codigo so ira funcionar se essa lista for feita)
 
