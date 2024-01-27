@@ -20,10 +20,7 @@ Selecione a biblioteca e pressione `Install package`.
 
 
 Para não dar erro de *serial port* quando der start em **"radio"**. 
-
-```http
-PRECISA SER LIGADO NO SEU PC O MÓDULO DA TELEMETRIA!!
-``` 
+`PRECISA SER LIGADO NO SEU PC O MÓDULO DA TELEMETRIA!!` 
 
 Para o mapa inclua **OBRIGATORIAMENTE** A BIBLIOTECA `FOLIUM` E O `MOZILLA FIREFOX`
 
