@@ -608,9 +608,9 @@ class Ui_MainWindow(object):
             self.update_plots(eixo, sig_rpm, eixo, sig_speed)
             self.update_map((latitude[-1], longitude[-1]))
 
-            self.acc_x.setText(f"Acc x = {round(accx[-1])}g")
-            self.acc_y.setText(f"Acc y = {round(accy[-1])}g")
-            self.acc_z.setText(f"Acc z = {round(accz[-1])}g")
+            self.acc_x.setText(f"Acc x = {round(accx[-1], 1)}g")
+            self.acc_y.setText(f"Acc y = {round(accy[-1], 1)}g")
+            self.acc_z.setText(f"Acc z = {round(accz[-1], 1)}g")
 
             self.batt.setText(f"Bateria = {soc[-1]}%")
 
