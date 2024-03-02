@@ -38,9 +38,9 @@ password = 'aratucampeao'
 # DataBase topics #
 AV_topic = "/AV_logging"
 
-SIZE = 49 # Size of message packet
+SIZE = 50 # Size of message packet
 # https://docs.python.org/pt-br/3.7/library/struct.html
-FORMAT = '<B6h2H4Bf2dI'
+FORMAT = '<B6h2H4Bf2dIB'
 
 car = deque(200 * [''], 200)
 accx = deque(200 * [0], 200)
@@ -60,6 +60,7 @@ latitude = deque(200 * [0], 200)
 longitude = deque(200 * [0], 200)
 #fuel_level = deque(200 * [0], 200)
 timestamp = deque(200 * [0], 200)
+sat = deque(200 * [0], 200)
 eixo = deque(200 * [0], 200)
 
 b, a = signal.butter(3, 0.15, analog=False)
@@ -83,6 +84,7 @@ latitude_save = []
 longitude_save = []
 #fuel_level_save = []
 timestamp_save = []
+sat_save = []
 
 stop_threads = False
 box_choice = 0
@@ -202,7 +204,7 @@ class Receiver(threading.Thread):
 
         data = ['Carro', 'Aceleracao X', 'Aceleracao Y', 'Aceleracao Z', 'DPS X',
                 'DPS Y', 'DPS Z', 'RPM', 'Velocidade', 'Temperatura Motor', 'Flags',
-                'State of Charge', 'Temperatura CVT', 'Volts', 'Latitude', 'Longitude', 'Timestamp']
+                'State of Charge', 'Temperatura CVT', 'Volts', 'Latitude', 'Longitude', 'Timestamp', 'Satelites']
 
         csv_baja = pd.DataFrame(columns=data)
         csv_baja.to_csv(self.csv_path, index=False)
@@ -295,6 +297,8 @@ class Receiver(threading.Thread):
             longitude.append(pckt[15])
             #fuel_level.append(pckt[16])
             timestamp.append(pckt[16])
+            sat.append(pckt[17])
+
 
             car_save.append("MB1")
             accx_save.append(pckt[1] * 0.061 / 1000)
@@ -316,6 +320,7 @@ class Receiver(threading.Thread):
             longitude_save.append(pckt[15])
             #fuel_level_save.append(pckt[16])
             timestamp_save.append(pckt[16])
+            sat_save.append(pckt[17])
 
         if len(car_save)!=0:
             try:
@@ -371,7 +376,8 @@ class Receiver(threading.Thread):
             'Latitude': latitude_save[-1],
             'Longitude': longitude_save[-1],
             #'Nivel de combustivel' : fuel_level_save[-1],
-            'Timestamp': timestamp_save[-1]
+            'Timestamp': timestamp_save[-1],
+            'Satelites': sat_save[-1]
         }
         csv = pd.DataFrame([DATA])
 
