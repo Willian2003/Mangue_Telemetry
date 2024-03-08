@@ -21,7 +21,7 @@ import struct
 import serial
 ###### Conectivity IMPORTS ######
 from paho.mqtt import client as mqtt_client
-import sqlite3
+#import sqlite3
 import json
 import pandas as pd
 
@@ -30,7 +30,8 @@ DIR = os.path.dirname(os.path.abspath(__file__))
 
 broker = "64.227.19.172"
 port = 1883
-topic = "/logging"
+#topic = "/logging"
+topic = "/ToRead"
 client_id = f'python-mqtt-{random.randint(0, 1000)}'
 username = 'manguebaja'
 password = 'aratucampeao'
@@ -38,7 +39,7 @@ password = 'aratucampeao'
 # DataBase topics #
 AV_topic = "/AV_logging"
 
-SIZE = 50 # Size of message packet
+SIZE = 47 # Size of message packet
 # https://docs.python.org/pt-br/3.7/library/struct.html
 FORMAT = '<B6h2H4Bf2dIB'
 
@@ -129,9 +130,9 @@ def subscribe(client: mqtt_client, topic):
         mqtt_msg_str = msg.payload.decode('utf-8')
         mqtt_msg_json = json.loads(mqtt_msg_str)
 
-        accx.append(mqtt_msg_json["accx"])
-        accy.append(mqtt_msg_json["accy"])
-        accz.append(mqtt_msg_json["accz"])
+        accx.append(mqtt_msg_json["accx"]*0.061/1000)
+        accy.append(mqtt_msg_json["accy"]*0.061/1000)
+        accz.append(mqtt_msg_json["accz"]*0.061/1000)
         rpm.append(mqtt_msg_json["rpm"])
         speed.append(mqtt_msg_json["speed"])
         temp_motor.append(mqtt_msg_json["motor"])
@@ -149,7 +150,6 @@ def subscribe(client: mqtt_client, topic):
 
 def publish(client: mqtt_client, path, msg):
     result = client.publish(path, msg)
-    # result: [0, 1]
     #status = result[0]
     #if status == 0:
     #    print(f"Send `{msg_to_json}` to topic `{path}`")
@@ -229,7 +229,6 @@ class Receiver(threading.Thread):
         try:
             pckt = list(struct.unpack_from(FORMAT, msg))
         except struct.error:
-            #print("erro")
             pass
         #print(pckt)
 
@@ -298,7 +297,6 @@ class Receiver(threading.Thread):
             #fuel_level.append(pckt[16])
             timestamp.append(pckt[16])
             sat.append(pckt[17])
-
 
             car_save.append("MB1")
             accx_save.append(pckt[1] * 0.061 / 1000)
@@ -614,13 +612,13 @@ class Ui_MainWindow(object):
             self.update_plots(eixo, sig_rpm, eixo, sig_speed)
             self.update_map((latitude[-1], longitude[-1]))
 
-            self.acc_x.setText(f"Acc x = {round(accx[-1], 1)}g")
-            self.acc_y.setText(f"Acc y = {round(accy[-1], 1)}g")
-            self.acc_z.setText(f"Acc z = {round(accz[-1], 1)}g")
+            self.acc_x.setText(f"Acc x = {round(accx[-1], 2)}g")
+            self.acc_y.setText(f"Acc y = {round(accy[-1], 2)}g")
+            self.acc_z.setText(f"Acc z = {round(accz[-1], 2)}g")
 
             self.batt.setText(f"Bateria = {soc[-1]}%")
 
-            self.temp_cvt.setText(f"CVT = {temp_cvt[-1]}ºC")
+            self.temp_cvt.setText(f"CVT = {round(temp_cvt[-1])}ºC")
             self.temp_motor.setText(f"Motor = {round(temp_motor[-1])}ºC")
 
             #if fuel_level[-1] != 0:
@@ -629,6 +627,8 @@ class Ui_MainWindow(object):
             #else:
             #    self.fuel.setPixmap(QtGui.QPixmap("fuel_empty_vector.jpg"))
             #    self.fuel.setScaledContents(True)
+
+            print(sat[-1], "\r\n")
 
             time.sleep(0.5)
 
@@ -660,9 +660,9 @@ class Ui_MainWindow(object):
             self.update_plots(eixo, sig_rpm, eixo, sig_speed)
             self.update_map((latitude[-1], longitude[-1]))
 
-            self.acc_x.setText(f"Acc x = {round(accx[-1], 1)}g")
-            self.acc_y.setText(f"Acc y = {round(accy[-1], 1)}g")
-            self.acc_z.setText(f"Acc z = {round(accz[-1], 1)}g")
+            self.acc_x.setText(f"Acc x = {round(accx[-1], 2)}g")
+            self.acc_y.setText(f"Acc y = {round(accy[-1], 2)}g")
+            self.acc_z.setText(f"Acc z = {round(accz[-1], 2)}g")
 
             self.batt.setText(f"Bateria = {soc[-1]}%")
             self.temp_cvt.setText(f"CVT = {round(sig_tempcvt[-1])}ºC")
